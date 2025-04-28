@@ -1,5 +1,4 @@
-# Create .gitignore for React app
-echo "# dependencies
+# dependencies
 /node_modules
 /.pnp
 .pnp.js
@@ -19,4 +18,4 @@ echo "# dependencies
 
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*" > .gitignorenode_modules
+yarn-error.log*
