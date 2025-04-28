@@ -1,0 +1,48 @@
+Regulation Number,PUWER Question
+4.1,Is the equipment suitable for the purpose for which it is used or provided?
+4.2,Is the equipment suitable for the conditions in which it is to be used?
+4.3,Is the equipment suitable for the purpose or conditions of use ( E.g. use of knives for cutting where scissors would suffice)?
+5.1,"Is work equipment maintained in an efficient state, in efficient working order, and in good repair?"
+5.2,"Is the equipment subject to statutory inspection? If yes state which regs apply such as LOLER, COSHH etc"
+5.3,Is the maintenance routine based on manufacturers recommendations?
+5.4,"Have all maintenance staff received adequate information, instruction and training?"
+5.5,Is a record of maintenance kept and if so is it up to date?
+6.1,"Is work equipment inspected when first installed, when moved or relocated, or when exposed to conditions that could cause deterioration?"
+6.2,"Is Equipment inspected at sutiable intervals when it is exposed to conditions causing deterioration, which is likely to result in dangerous situations?"
+6.3,"Is the equipment inspected for safety , each time an exceptional circumstance arises? E.g. a major fault occurs."
+7.1,Is specific risk associated with the use of the equipment identified and mitigated?
+7.2,"Is the repair, maintenance, modifications and servicing restricted to specific persons?"
+7.3,Have the specific persons been adequately trained for their role?
+8,Are employees provided with adequate information and instructions regarding the use of the equipment?
+9.1,Are employees provided with adequate training on the use of the equipment?
+9.2,"Have all supervisors/manager of work equipment received adequate information, instruction, and training? Including methods, risks and precautions"
+10.1,Is the work equipment CE marked (where appropriate) and accompanied by the relevant declaration(s)? 
+10.2,"If so and where an essential requirement has been applied to the design and construction of an item, have the requirements of regs 11-19 and 22-29 been applied?"
+11.1,Are sutiable safeguarding measures in place to either prevent access OR stop movement of all dangerous machinery?
+11.2,"Have fixed guards been provided?  If not then.. have other guards or protections been provided? If not then as far as reasonably practicable have jigs, holders, push sticks or similar protection devices been provided?"
+12,Have specified hazards been either prevented by design or are suitable risk control measures in place?
+13,"Are suitable risk control measures in place to prevent injury to any person by burn, scald or sear?"
+14.1,Is there one or more controls for starting work equipment after a stop condition or after a change in operating conditions?
+14.2,Is a restart prevented when a protective device is closed such as a door with an interlock?
+14.3,Are controls protected against inadvertent operation? E.g. start button shrouded
+15.1,Is there a sutiable stop control?
+15.2,Are all sources of energy switched off after stopping the equipment  (compressed air/hydraulic pressure)?
+15.3,Does the stop control equipment operate in priority to controls which start or change operating conditions?
+16,Are there appropriate controls for emergency stopping the machine?
+17.1,Are controls appropriately identified and positioned to give clear view of dangerous moving parts?
+17.2,Are all controls clearly visible? Identifiable? And appropriately marked?
+17.3,"So far as reasonably practicable, can the operator of any control ensure from the position of control, no person is in a place of risk to health and safety? If Yes go to reg 18."
+17.4,"If no, are systems in place to ensure health and safety?"
+17.5,"if no are there audible, visible or warning devices which are activated before the equipment starts?"
+18.1,"Are control systems safe and allow for failures, faults and constraints to be expected in the planned circumstances of use?"
+18.2,"Does a failure of any part of the control system or its power supply lead to a 'fail-safe' condition, which will not impede the operation of the 'stop' or 'emergency stop' controls?"
+19.1,Is work equipment provided with suitable means to isolate it from all its sources of energy?
+19.2,Are the means of isolation clearly identifiable?
+19.3,Are they accessible?
+19.4,"Are there appropriate measures to ensure that reconnection does not expose any person to a risk of injury? (E.g. reconnection intiating movement, adequate guards)"
+20,Is the machine stable under its own weight or bolted to the floor?
+21,Is adequate lighting provided to ensure safe use of equipment?
+22,"For routine and planned preventative maintenance tasks, can these be done in a safe manner?"
+23.1,Is the work equipment clearly marked with relevant information?
+23.2,Do all markings comply with BS 5378 or safety signs and signals regulations 1998?
+24,Are suitable and sufficient warnings fitted and unambiguous?
