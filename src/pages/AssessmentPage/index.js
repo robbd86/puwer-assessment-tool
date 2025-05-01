@@ -151,27 +151,47 @@ const AssessmentPage = () => {
     navigate(`/report/${assessment.id}`);
   };
   
-  // Add this new handler for next to recommendations button
+  // Enhanced tab changing with data preservation
+  const handleTabChange = (tab) => {
+    try {
+      // Always save the current state before changing tabs
+      if (id && assessment) {
+        console.log("Saving assessment before tab change:", assessment);
+        updateAssessment(id, { 
+          ...assessment,
+          equipmentDetails: equipmentDetails, // Ensure equipment details are preserved
+          modifiedAt: new Date().toISOString()
+        });
+      }
+      
+      // Set the active tab with a small delay to ensure state updates
+      setTimeout(() => {
+        setActiveTab(tab);
+      }, 100);
+      
+    } catch (error) {
+      console.error("Error saving assessment during tab change:", error);
+      setMessage('Error saving data. Please try again.');
+      setMessageType('danger');
+    }
+  };
+  
+  // Updated Next to Recommendations handler
   const handleNextToRecommendations = () => {
     if (id && assessment) {
       try {
         // Force update the assessment with current data
         updateAssessment(id, { 
           ...assessment,
+          equipmentDetails: equipmentDetails, // Explicitly include equipment details
           modifiedAt: new Date().toISOString() 
         });
         
-        // Force a tab change with a small delay to ensure state updates
-        setTimeout(() => {
-          setActiveTab('recommendations');
-          
-          // Show a success message
-          setMessage('Assessment saved successfully');
-          setMessageType('success');
-          
-          // Force a redraw by setting a state value
-          setAssessment({...assessment});
-        }, 100);
+        // Show a success message and change tabs
+        setMessage('Assessment saved successfully');
+        setMessageType('success');
+        handleTabChange('recommendations');
+        
       } catch (error) {
         console.error("Error saving assessment:", error);
         setMessage('Error saving assessment. Please try again.');
@@ -179,7 +199,7 @@ const AssessmentPage = () => {
       }
     } else {
       // Just change tabs if no assessment
-      setActiveTab('recommendations');
+      handleTabChange('recommendations');
     }
   };
   
@@ -215,7 +235,7 @@ const AssessmentPage = () => {
       
       <Tabs
         activeKey={activeTab}
-        onSelect={(k) => setActiveTab(k)}
+        onSelect={(k) => handleTabChange(k)}
         className="mb-4"
       >
         <Tab eventKey="details" title="Equipment Details">
@@ -419,7 +439,7 @@ const AssessmentPage = () => {
               <div className="d-flex justify-content-between mt-4">
                 <Button 
                   variant="primary" 
-                  onClick={() => setActiveTab('assessment')}
+                  onClick={() => handleTabChange('assessment')}
                 >
                   Back to Questions
                 </Button>
