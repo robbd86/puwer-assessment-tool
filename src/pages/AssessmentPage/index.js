@@ -154,17 +154,33 @@ const AssessmentPage = () => {
   // Add this new handler for next to recommendations button
   const handleNextToRecommendations = () => {
     if (id && assessment) {
-      // Save any unsaved changes to ensure they're not lost
-      updateAssessment(id, { 
-        ...assessment,
-        modifiedAt: new Date().toISOString() 
-      });
-      
-      // Show a success message
-      setMessage('Assessment saved successfully');
-      setMessageType('success');
+      try {
+        // Force update the assessment with current data
+        updateAssessment(id, { 
+          ...assessment,
+          modifiedAt: new Date().toISOString() 
+        });
+        
+        // Force a tab change with a small delay to ensure state updates
+        setTimeout(() => {
+          setActiveTab('recommendations');
+          
+          // Show a success message
+          setMessage('Assessment saved successfully');
+          setMessageType('success');
+          
+          // Force a redraw by setting a state value
+          setAssessment({...assessment});
+        }, 100);
+      } catch (error) {
+        console.error("Error saving assessment:", error);
+        setMessage('Error saving assessment. Please try again.');
+        setMessageType('danger');
+      }
+    } else {
+      // Just change tabs if no assessment
+      setActiveTab('recommendations');
     }
-    setActiveTab('recommendations');
   };
   
   // Group questions by section
