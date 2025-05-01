@@ -1,27 +1,34 @@
-// Find the function that handles the "Next: Recommendations" button click
-
+// Find the function handling the "Next: Recommendations" button click
 const handleNextRecommendations = (e) => {
-  // Add this line to prevent default form submission
+  // Prevent default form submission behavior
   e.preventDefault();
   
-  // Make sure to save the current assessment data first
+  // Make sure assessment has an ID
+  const assessmentId = assessment?.id || generateId();
+  
+  // Save current section data to ensure nothing is lost
   const updatedAssessment = {
     ...assessment,
+    id: assessmentId,
     sections: {
       ...assessment.sections,
       [currentSection]: {
-        ...assessment.sections[currentSection],
-        recommendations: recommendationsValue, // Make sure this value is captured
-        // other section data...
+        ...assessment.sections?.[currentSection],
+        // Add any form data that needs to be captured
+        comments: document.querySelector('textarea[name="comments"]')?.value || '',
+        // Add other form fields as needed
       }
-    }
+    },
+    lastUpdated: new Date().toISOString()
   };
   
-  // Save to localStorage BEFORE navigation
+  // Save the assessment to localStorage
   saveAssessment(updatedAssessment);
   
-  // Only navigate after saving is complete
-  setTimeout(() => {
-    navigate(`/recommendations/${assessment.id}`);
-  }, 100);
+  // Force navigation to recommendations page with the correct ID
+  console.log('Navigating to recommendations with ID:', assessmentId);
+  window.location.href = `/recommendations/${assessmentId}`;
 };
+
+// Make sure your button has this event handler
+// <button onClick={handleNextRecommendations}>Next: Recommendations</button>
