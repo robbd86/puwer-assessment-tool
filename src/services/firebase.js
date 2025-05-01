@@ -62,3 +62,29 @@ export const getDataFromURL = (url) => {
   }
   return url;
 };
+
+// Add this helper function if not already present
+export const saveAssessment = (assessment) => {
+  try {
+    // Get existing assessments
+    const assessments = JSON.parse(localStorage.getItem('assessments')) || [];
+    
+    // Find if this assessment exists
+    const index = assessments.findIndex(a => a.id === assessment.id);
+    
+    // Update or add the assessment
+    if (index >= 0) {
+      assessments[index] = assessment;
+    } else {
+      assessments.push(assessment);
+    }
+    
+    // Save back to localStorage
+    localStorage.setItem('assessments', JSON.stringify(assessments));
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving assessment:', error);
+    return false;
+  }
+};
