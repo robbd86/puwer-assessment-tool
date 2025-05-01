@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';const firebaseConfig = {  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,  appId: process.env.REACT_APP_FIREBASE_APP_ID,  measurementId: "G-9FLSKDGCLW"};const app = initializeApp(firebaseConfig);// Local storage implementation to replace Firebase storage
+// Removed all Firebase references and initialization. Only localStorage-based utilities remain.
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
@@ -12,7 +12,6 @@ export const storage = {
           const id = generateId();
           const key = `storage_${path}_${id}`;
           localStorage.setItem(key, reader.result);
-          
           resolve({
             ref: {
               getDownloadURL: () => Promise.resolve(`local://${key}`),
@@ -35,7 +34,6 @@ export const storage = {
       const prefix = `storage_${path}_`;
       const keys = Object.keys(localStorage)
         .filter(key => key.startsWith(prefix));
-      
       return Promise.resolve({
         items: keys.map(key => ({
           getDownloadURL: () => Promise.resolve(`local://${key}`),
@@ -44,7 +42,6 @@ export const storage = {
       });
     }
   }),
-  
   // Helper to retrieve data
   getFromLocalURL: (url) => {
     if (url.startsWith('local://')) {
@@ -68,20 +65,16 @@ export const saveAssessment = (assessment) => {
   try {
     // Get existing assessments
     const assessments = JSON.parse(localStorage.getItem('assessments')) || [];
-    
     // Find if this assessment exists
     const index = assessments.findIndex(a => a.id === assessment.id);
-    
     // Update or add the assessment
     if (index >= 0) {
       assessments[index] = assessment;
     } else {
       assessments.push(assessment);
     }
-    
     // Save back to localStorage
     localStorage.setItem('assessments', JSON.stringify(assessments));
-    
     return true;
   } catch (error) {
     console.error('Error saving assessment:', error);
