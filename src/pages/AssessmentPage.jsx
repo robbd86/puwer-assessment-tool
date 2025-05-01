@@ -1,29 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-// Import your Firebase service or utility functions
 import { saveAssessment } from '../services/firebase';
 
-// Add this utility function or import it from a utilities file
+// Utility function for generating IDs
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
 const AssessmentPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  
+  // Initialize state
   const [assessment, setAssessment] = useState({
     id: id || generateId(),
     sections: {}
   });
-  const [currentSection, setCurrentSection] = useState('section1'); // Or whatever your section id is
+  const [currentSection, setCurrentSection] = useState('section1');
+  
+  // Add your useEffect for loading existing assessment data if needed
+  useEffect(() => {
+    // Your code to load assessment data if id exists
+  }, [id]);
 
-  // Add this function inside your component
+  // Navigation handler for recommendations
   const handleNextRecommendations = (e) => {
-    // Prevent default form submission behavior
     e.preventDefault();
     
-    // Make sure assessment has an ID
     const assessmentId = assessment?.id || generateId();
     
-    // Save current section data to ensure nothing is lost
     const updatedAssessment = {
       ...assessment,
       id: assessmentId,
@@ -31,28 +34,26 @@ const AssessmentPage = () => {
         ...assessment.sections,
         [currentSection]: {
           ...assessment.sections?.[currentSection],
-          // Add any form data that needs to be captured
           comments: document.querySelector('textarea[name="comments"]')?.value || '',
-          // Add other form fields as needed
         }
       },
       lastUpdated: new Date().toISOString()
     };
     
-    // Save the assessment to localStorage
     saveAssessment(updatedAssessment);
-    
-    // Force navigation to recommendations page with the correct ID
-    console.log('Navigating to recommendations with ID:', assessmentId);
-    navigate(`/recommendations/${assessmentId}`);
+    navigate(`/report/${assessmentId}`);  // Adjust this path as needed
   };
 
+  // Component rendering
   return (
-    <div>
-      {/* Your form elements */}
+    <div className="assessment-page">
+      {/* Your form content here */}
       
-      {/* Update your button to use the new handler */}
-      <button onClick={handleNextRecommendations}>
+      <button 
+        type="button" 
+        className="btn btn-primary" 
+        onClick={handleNextRecommendations}
+      >
         Next: Recommendations
       </button>
     </div>
