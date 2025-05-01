@@ -151,6 +151,22 @@ const AssessmentPage = () => {
     navigate(`/report/${assessment.id}`);
   };
   
+  // Add this new handler for next to recommendations button
+  const handleNextToRecommendations = () => {
+    if (id && assessment) {
+      // Save any unsaved changes to ensure they're not lost
+      updateAssessment(id, { 
+        ...assessment,
+        modifiedAt: new Date().toISOString() 
+      });
+      
+      // Show a success message
+      setMessage('Assessment saved successfully');
+      setMessageType('success');
+    }
+    setActiveTab('recommendations');
+  };
+  
   // Group questions by section
   const sectionedQuestions = {};
   questions.forEach(question => {
@@ -307,7 +323,7 @@ const AssessmentPage = () => {
               <div className="d-flex justify-content-between mt-4">
                 <Button 
                   variant="primary" 
-                  onClick={() => setActiveTab('recommendations')}
+                  onClick={handleNextToRecommendations}
                 >
                   Next: Recommendations
                 </Button>
