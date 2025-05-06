@@ -1,52 +1,45 @@
 import React, { useRef, useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
+import { storage } from '../../services/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const PhotoUploader = ({ photos = [], onChange }) => {
   const fileInputRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Convert uploaded files to data URLs (in-memory only)
-  const handleFileSelect = (event) => {
+  const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
 
-    const processFiles = files.map(file => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          resolve({
-            id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            dataUrl: e.target.result,
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            timestamp: new Date().toISOString()
-          });
-        };
-        reader.readAsDataURL(file);
-      });
+    const uploadPromises = files.map(async (file) => {
+      const storageRef = ref(storage, `photos/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      return {
+        id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        url,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        timestamp: new Date().toISOString()
+      };
     });
-
-    Promise.all(processFiles).then(newPhotos => {
-      onChange([...photos, ...newPhotos]);
-    });
+    const newPhotos = await Promise.all(uploadPromises);
+    onChange([...photos, ...newPhotos]);
     event.target.value = '';
   };
 
-  // Remove a photo
   const handleRemovePhoto = (photoId) => {
     const updatedPhotos = photos.filter(photo => photo.id !== photoId);
     onChange(updatedPhotos);
   };
 
-  // Show photo preview
   const handleShowPreview = (photo) => {
     setPreviewImage(photo);
     setShowPreview(true);
   };
 
-  // Close preview modal
   const handleClosePreview = () => {
     setShowPreview(false);
     setPreviewImage(null);
@@ -77,7 +70,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           {photos.map(photo => (
             <div key={photo.id} className="position-relative">
               <img 
-                src={photo.dataUrl} 
+                src={photo.url} 
                 alt="Evidence" 
                 className="photo-thumbnail" 
                 onClick={() => handleShowPreview(photo)}
@@ -95,7 +88,6 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           ))}
         </div>
       )}
-      {/* Preview Modal */}
       <Modal show={showPreview} onHide={handleClosePreview} centered size="lg">
         <Modal.Header closeButton>
           <Modal.Title>{previewImage?.name || 'Photo Evidence'}</Modal.Title>
@@ -103,7 +95,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
         <Modal.Body className="text-center">
           {previewImage && (
             <img
-              src={previewImage.dataUrl}
+              src={previewImage.url}
               alt="Evidence"
               style={{ 
                 maxWidth: '100%', 
