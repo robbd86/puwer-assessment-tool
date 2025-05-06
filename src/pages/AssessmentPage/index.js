@@ -50,8 +50,17 @@ const AssessmentPage = () => {
   // Add progress state
   const [progressPercentage, setProgressPercentage] = useState(0);
   
-  // React Hook Form setup
-  const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm();
+  // React Hook Form setup with default values
+  const { register, handleSubmit, formState: { errors, isValid }, setValue, reset, getValues } = useForm({
+    mode: 'onChange', // Validate on change for immediate feedback
+    defaultValues: {
+      name: '',
+      location: '',
+      reference: '',
+      assessor: '',
+      nameplateInfo: ''
+    }
+  });
   
   // Load questions from CSV if not already loaded
   useEffect(() => {
@@ -205,27 +214,47 @@ const AssessmentPage = () => {
     }
   };
   
-  // Define the onSubmitEquipmentDetails function
+  // Direct form submission handler that simplifies the flow
   const onSubmitEquipmentDetails = (data) => {
-    // Log the data we received from the form
-    console.log("Form data received:", data);
+    console.log("Form submitted with data:", data);
     
-    // Update the equipment details with form data
-    setEquipmentDetails(data);
-    setMessage('');
+    // Ensure we have required fields
+    if (!data.name || !data.assessor) {
+      setMessage('Please enter equipment name and assessor name to continue.');
+      setMessageType('danger');
+      return;
+    }
     
-    if (!id) {
-      // Create new assessment - pass the form data directly instead of using the state
-      // This ensures we use the most current data even if state hasn't updated yet
-      const newId = createAssessment(data);
-      console.log("Created assessment with ID:", newId);
-      navigate(`/assessment/${newId}`);
-    } else {
-      // Update existing assessment - also use the form data directly
-      updateAssessment(id, { equipmentDetails: data });
-      setActiveTab('assessment');
-      setMessage('Equipment details updated successfully');
-      setMessageType('success');
+    try {
+      setMessage('');
+      
+      if (!id) {
+        // For new assessments, create directly with form data
+        console.log("Creating new assessment with:", data);
+        const newId = createAssessment({
+          ...data,
+          nameplatePhotos // Include any uploaded photos
+        });
+        console.log("Created assessment with ID:", newId);
+        
+        // Direct navigation to the new assessment
+        window.location.href = `/assessment/${newId}`;
+      } else {
+        // For existing assessments, update and switch tab
+        updateAssessment(id, { 
+          equipmentDetails: {
+            ...data,
+            nameplatePhotos
+          }
+        });
+        setActiveTab('assessment');
+        setMessage('Equipment details updated successfully');
+        setMessageType('success');
+      }
+    } catch (error) {
+      console.error("Error saving assessment:", error);
+      setMessage('Error saving assessment data. Please try again.');
+      setMessageType('danger');
     }
   };
   
@@ -294,7 +323,7 @@ const AssessmentPage = () => {
         <Tab eventKey="details" title="Equipment Details">
           <Card>
             <Card.Body>
-              <Form onSubmit={handleSubmit(onSubmitEquipmentDetails)}>
+              <Form noValidate onSubmit={handleSubmit(onSubmitEquipmentDetails)}>
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
@@ -375,6 +404,7 @@ const AssessmentPage = () => {
                 <Button 
                   variant="primary" 
                   type="submit"
+                  disabled={Object.keys(errors).length > 0}
                 >
                   {id ? 'Update Details & Continue' : 'Start Assessment'}
                 </Button>
