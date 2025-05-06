@@ -297,10 +297,8 @@ const AssessmentPage = () => {
                       <Form.Control 
                         type="text"
                         name="name"
-                        value={equipmentDetails.name || ''}
-                        onChange={handleEquipmentDetailsChange}
-                        required
                         {...register('name', { required: true })}
+                        isInvalid={!!errors.name}
                       />
                       {errors.name && <span className="text-danger">This field is required</span>}
                     </Form.Group>
@@ -311,10 +309,8 @@ const AssessmentPage = () => {
                       <Form.Control 
                         type="text"
                         name="location"
-                        value={equipmentDetails.location || ''}
-                        onChange={handleEquipmentDetailsChange}
-                        required
                         {...register('location', { required: true })}
+                        isInvalid={!!errors.location}
                       />
                       {errors.location && <span className="text-danger">This field is required</span>}
                     </Form.Group>
@@ -328,8 +324,6 @@ const AssessmentPage = () => {
                       <Form.Control 
                         type="text"
                         name="reference"
-                        value={equipmentDetails.reference || ''}
-                        onChange={handleEquipmentDetailsChange}
                         {...register('reference')}
                       />
                     </Form.Group>
@@ -340,10 +334,8 @@ const AssessmentPage = () => {
                       <Form.Control 
                         type="text"
                         name="assessor"
-                        value={equipmentDetails.assessor || ''}
-                        onChange={handleEquipmentDetailsChange}
-                        required
                         {...register('assessor', { required: true })}
+                        isInvalid={!!errors.assessor}
                       />
                       {errors.assessor && <span className="text-danger">This field is required</span>}
                     </Form.Group>
@@ -357,8 +349,6 @@ const AssessmentPage = () => {
                         as="textarea"
                         rows={2}
                         name="nameplateInfo"
-                        value={equipmentDetails.nameplateInfo || ''}
-                        onChange={handleEquipmentDetailsChange}
                         placeholder="Enter details from the machine nameplate, serial number, manufacturer, etc."
                         {...register('nameplateInfo')}
                       />
