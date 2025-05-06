@@ -207,16 +207,21 @@ const AssessmentPage = () => {
   
   // Define the onSubmitEquipmentDetails function
   const onSubmitEquipmentDetails = (data) => {
+    // Log the data we received from the form
+    console.log("Form data received:", data);
+    
     // Update the equipment details with form data
     setEquipmentDetails(data);
     setMessage('');
     
     if (!id) {
-      // Create new assessment
+      // Create new assessment - pass the form data directly instead of using the state
+      // This ensures we use the most current data even if state hasn't updated yet
       const newId = createAssessment(data);
+      console.log("Created assessment with ID:", newId);
       navigate(`/assessment/${newId}`);
     } else {
-      // Update existing assessment
+      // Update existing assessment - also use the form data directly
       updateAssessment(id, { equipmentDetails: data });
       setActiveTab('assessment');
       setMessage('Equipment details updated successfully');
