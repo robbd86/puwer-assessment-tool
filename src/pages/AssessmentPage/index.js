@@ -9,8 +9,10 @@ import {
   Tab, 
   Alert,
   Row,
-  Col
+  Col,
+  ProgressBar
 } from 'react-bootstrap';
+import { useForm } from 'react-hook-form';
 import { useAssessment } from '../../contexts/AssessmentContext';
 import { loadQuestions } from '../../services/csvService';
 import { getRecommendations } from '../../services/mcpService';
@@ -44,6 +46,12 @@ const AssessmentPage = () => {
   const [mcpRecommendations, setMcpRecommendations] = useState([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [nameplatePhotos, setNameplatePhotos] = useState([]);
+  
+  // Add progress state
+  const [progressPercentage, setProgressPercentage] = useState(0);
+  
+  // React Hook Form setup
+  const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm();
   
   // Load questions from CSV if not already loaded
   useEffect(() => {
@@ -86,6 +94,27 @@ const AssessmentPage = () => {
       updateAssessment(id, { equipmentDetails: { ...equipmentDetails, nameplatePhotos } });
     }
   }, [nameplatePhotos]);
+  
+  // Update form values when equipment details change
+  useEffect(() => {
+    if (equipmentDetails) {
+      setValue('name', equipmentDetails.name || '');
+      setValue('location', equipmentDetails.location || '');
+      setValue('reference', equipmentDetails.reference || '');
+      setValue('assessor', equipmentDetails.assessor || '');
+      setValue('nameplateInfo', equipmentDetails.nameplateInfo || '');
+    }
+  }, [equipmentDetails, setValue]);
+  
+  // Calculate progress percentage when assessment changes
+  useEffect(() => {
+    if (assessment && questions.length > 0) {
+      const answeredQuestions = Object.keys(assessment.answers || {}).length;
+      const totalQuestions = questions.length;
+      const percentage = Math.round((answeredQuestions / totalQuestions) * 100);
+      setProgressPercentage(percentage);
+    }
+  }, [assessment, questions]);
   
   // Handle equipment details changes
   const handleEquipmentDetailsChange = (e) => {
@@ -241,7 +270,7 @@ const AssessmentPage = () => {
         <Tab eventKey="details" title="Equipment Details">
           <Card>
             <Card.Body>
-              <Form>
+              <Form onSubmit={handleSubmit(onSubmitEquipmentDetails)}>
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
@@ -252,7 +281,9 @@ const AssessmentPage = () => {
                         value={equipmentDetails.name || ''}
                         onChange={handleEquipmentDetailsChange}
                         required
+                        {...register('name', { required: true })}
                       />
+                      {errors.name && <span className="text-danger">This field is required</span>}
                     </Form.Group>
                   </Col>
                   <Col md={6}>
@@ -264,7 +295,9 @@ const AssessmentPage = () => {
                         value={equipmentDetails.location || ''}
                         onChange={handleEquipmentDetailsChange}
                         required
+                        {...register('location', { required: true })}
                       />
+                      {errors.location && <span className="text-danger">This field is required</span>}
                     </Form.Group>
                   </Col>
                 </Row>
@@ -278,6 +311,7 @@ const AssessmentPage = () => {
                         name="reference"
                         value={equipmentDetails.reference || ''}
                         onChange={handleEquipmentDetailsChange}
+                        {...register('reference')}
                       />
                     </Form.Group>
                   </Col>
@@ -290,7 +324,9 @@ const AssessmentPage = () => {
                         value={equipmentDetails.assessor || ''}
                         onChange={handleEquipmentDetailsChange}
                         required
+                        {...register('assessor', { required: true })}
                       />
+                      {errors.assessor && <span className="text-danger">This field is required</span>}
                     </Form.Group>
                   </Col>
                 </Row>
@@ -305,6 +341,7 @@ const AssessmentPage = () => {
                         value={equipmentDetails.nameplateInfo || ''}
                         onChange={handleEquipmentDetailsChange}
                         placeholder="Enter details from the machine nameplate, serial number, manufacturer, etc."
+                        {...register('nameplateInfo')}
                       />
                     </Form.Group>
                   </Col>
@@ -323,7 +360,7 @@ const AssessmentPage = () => {
                 
                 <Button 
                   variant="primary" 
-                  onClick={handleStartAssessment}
+                  type="submit"
                 >
                   {id ? 'Update Details & Continue' : 'Start Assessment'}
                 </Button>
@@ -335,6 +372,22 @@ const AssessmentPage = () => {
         <Tab eventKey="assessment" title="Assessment Questions" disabled={!id}>
           {assessment && (
             <>
+              {/* Progress Bar */}
+              <Card className="mb-4">
+                <Card.Body>
+                  <h5>Assessment Progress: {progressPercentage}% Complete</h5>
+                  <ProgressBar 
+                    now={progressPercentage} 
+                    label={`${progressPercentage}%`} 
+                    variant={progressPercentage < 30 ? "danger" : progressPercentage < 70 ? "warning" : "success"}
+                    className="mb-2"
+                  />
+                  <small className="text-muted">
+                    {Object.keys(assessment.answers || {}).length} of {questions.length} questions answered
+                  </small>
+                </Card.Body>
+              </Card>
+
               {Object.entries(sectionedQuestions).length > 0 ? (
                 Object.entries(sectionedQuestions).map(([section, sectionQuestions]) => (
                   <div key={section} className="mb-4">

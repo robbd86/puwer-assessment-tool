@@ -1,50 +1,45 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Form, Button, Card, Row, Col } from 'react-bootstrap';
+import { useForm } from 'react-hook-form';
 import { useAssessment } from '../../contexts/AssessmentContext';
 
 const RecommendationForm = ({ assessmentId }) => {
   const { addRecommendation } = useAssessment();
-  const [text, setText] = useState('');
-  const [priority, setPriority] = useState('Medium');
-  const [assignee, setAssignee] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [validated, setValidated] = useState(false);
-  
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    const form = e.currentTarget;
-    
-    // Form validation
-    if (!form.checkValidity()) {
-      e.stopPropagation();
-      setValidated(true);
-      return;
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm({
+    defaultValues: {
+      text: '',
+      priority: 'Medium',
+      assignee: '',
+      dueDate: ''
     }
-    
-    // Add the recommendation to the assessment
-    addRecommendation(assessmentId, {
-      text,
-      priority,
-      assignee,
-      dueDate
-    });
-    
-    // Reset form
-    setText('');
-    setPriority('Medium');
-    setAssignee('');
-    setDueDate('');
-    setValidated(false);
-  };
+  });
   
   // Set default date to 14 days from now if not set
   const handleAddRecommendation = () => {
-    if (!dueDate) {
+    const currentDueDate = document.querySelector('input[name="dueDate"]').value;
+    if (!currentDueDate) {
       const twoWeeksFromNow = new Date();
       twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
-      setDueDate(twoWeeksFromNow.toISOString().split('T')[0]);
+      setValue('dueDate', twoWeeksFromNow.toISOString().split('T')[0]);
     }
+  };
+  
+  const onSubmit = (data) => {
+    // Add the recommendation to the assessment
+    addRecommendation(assessmentId, {
+      text: data.text,
+      priority: data.priority,
+      assignee: data.assignee,
+      dueDate: data.dueDate
+    });
+    
+    // Reset form
+    reset({
+      text: '',
+      priority: 'Medium',
+      assignee: '',
+      dueDate: ''
+    });
   };
   
   return (
@@ -53,19 +48,21 @@ const RecommendationForm = ({ assessmentId }) => {
         <h4>Add New Recommendation</h4>
       </Card.Header>
       <Card.Body>
-        <Form noValidate validated={validated} onSubmit={handleSubmit}>
+        <Form noValidate onSubmit={handleSubmit(onSubmit)}>
           <Form.Group className="mb-3">
             <Form.Label>Recommendation*</Form.Label>
             <Form.Control
               as="textarea"
               rows={3}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              required
               placeholder="Describe the recommendation or corrective action needed..."
+              {...register("text", { 
+                required: "Recommendation text is required",
+                minLength: { value: 10, message: "Please provide at least 10 characters" }
+              })}
+              isInvalid={!!errors.text}
             />
             <Form.Control.Feedback type="invalid">
-              Please provide a recommendation.
+              {errors.text?.message}
             </Form.Control.Feedback>
           </Form.Group>
           
@@ -74,8 +71,7 @@ const RecommendationForm = ({ assessmentId }) => {
               <Form.Group className="mb-3">
                 <Form.Label>Priority Level</Form.Label>
                 <Form.Select 
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
+                  {...register("priority")}
                 >
                   <option value="Low">Low</option>
                   <option value="Medium">Medium</option>
@@ -88,13 +84,14 @@ const RecommendationForm = ({ assessmentId }) => {
                 <Form.Label>Assignee*</Form.Label>
                 <Form.Control
                   type="text"
-                  value={assignee}
-                  onChange={(e) => setAssignee(e.target.value)}
-                  required
                   placeholder="Person responsible"
+                  {...register("assignee", { 
+                    required: "Assignee is required" 
+                  })}
+                  isInvalid={!!errors.assignee}
                 />
                 <Form.Control.Feedback type="invalid">
-                  Please specify who is responsible.
+                  {errors.assignee?.message}
                 </Form.Control.Feedback>
               </Form.Group>
             </Col>
@@ -103,12 +100,13 @@ const RecommendationForm = ({ assessmentId }) => {
                 <Form.Label>Due Date*</Form.Label>
                 <Form.Control
                   type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  required
+                  {...register("dueDate", { 
+                    required: "Due date is required" 
+                  })}
+                  isInvalid={!!errors.dueDate}
                 />
                 <Form.Control.Feedback type="invalid">
-                  Please specify a due date.
+                  {errors.dueDate?.message}
                 </Form.Control.Feedback>
               </Form.Group>
             </Col>
