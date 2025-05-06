@@ -205,6 +205,25 @@ const AssessmentPage = () => {
     }
   };
   
+  // Define the onSubmitEquipmentDetails function
+  const onSubmitEquipmentDetails = (data) => {
+    // Update the equipment details with form data
+    setEquipmentDetails(data);
+    setMessage('');
+    
+    if (!id) {
+      // Create new assessment
+      const newId = createAssessment(data);
+      navigate(`/assessment/${newId}`);
+    } else {
+      // Update existing assessment
+      updateAssessment(id, { equipmentDetails: data });
+      setActiveTab('assessment');
+      setMessage('Equipment details updated successfully');
+      setMessageType('success');
+    }
+  };
+  
   // Updated Next to Recommendations handler
   const handleNextToRecommendations = () => {
     if (id && assessment) {
