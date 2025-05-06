@@ -11,6 +11,50 @@ async function fetchImageAsDataURL(url) {
   });
 }
 
+// Helper function to fix image orientation
+async function fixImageOrientation(dataUrl, maxWidth, maxHeight) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Calculate aspect ratio to maintain proportions
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > height) {
+        // Landscape orientation
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+      } else {
+        // Portrait or square orientation
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height;
+          height = maxHeight;
+        }
+      }
+      
+      // Set canvas dimensions
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Draw image with proper orientation
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Convert back to data URL
+      resolve({
+        dataUrl: canvas.toDataURL('image/jpeg', 0.85),
+        width,
+        height
+      });
+    };
+    img.src = dataUrl;
+  });
+}
+
 // Modernized and async: embed photos
 export const generatePDF = async (assessment, questions) => {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -55,28 +99,53 @@ export const generatePDF = async (assessment, questions) => {
     doc.setFontSize(13);
     doc.setTextColor('#007bff');
     doc.text('Nameplate / Machine Info Photos:', 40, y);
-    y += 10;
+    y += 20;
     let photoX = 40;
     let maxHeight = 0;
+    
     for (const photo of nameplatePhotos) {
       try {
-        doc.addImage(photo.dataUrl, 'JPEG', photoX, y, 100, 75);
-        photoX += 110;
-        if (75 > maxHeight) maxHeight = 75;
+        // Fix image orientation and respect aspect ratio
+        const maxPhotoWidth = 140;
+        const maxPhotoHeight = 105;
+        
+        // Process the image to fix orientation and maintain aspect ratio
+        const processedImage = await fixImageOrientation(
+          photo.dataUrl, 
+          maxPhotoWidth, 
+          maxPhotoHeight
+        );
+        
+        // Add the processed image
+        doc.addImage(
+          processedImage.dataUrl, 
+          'JPEG', 
+          photoX, 
+          y, 
+          processedImage.width, 
+          processedImage.height
+        );
+        
+        photoX += processedImage.width + 20;
+        
+        if (processedImage.height > maxHeight) 
+          maxHeight = processedImage.height;
+        
         // Wrap to next line if too wide
-        if (photoX + 100 > pageWidth - 40) {
+        if (photoX + maxPhotoWidth > pageWidth - 40) {
           photoX = 40;
-          y += maxHeight + 10;
+          y += maxHeight + 15;
           maxHeight = 0;
         }
       } catch (e) {
+        console.error('Error processing photo:', e);
         doc.setTextColor('#dc3545');
         doc.text('Photo could not be loaded', photoX, y + 20);
         doc.setTextColor('#222');
         photoX += 110;
       }
     }
-    y += maxHeight + 20;
+    y += maxHeight + 25;
   }
 
   // Summary box
@@ -159,12 +228,32 @@ export const generatePDF = async (assessment, questions) => {
           let photoY = y + 30;
           for (const photo of answer.photos) {
             try {
-              const dataUrl = await fetchImageAsDataURL(photo.url);
-              // Add image (max width 120px, max height 90px)
-              doc.addImage(photo.dataUrl, 'JPEG', 90, photoY, 120, 90);
-              photoY += 100;
-              if (photoY > 770) { doc.addPage(); photoY = 40; }
+              // Get the photo data URL
+              const dataUrl = photo.dataUrl || await fetchImageAsDataURL(photo.url);
+              
+              // Fix orientation and size
+              const maxWidth = 180;
+              const maxHeight = 135;
+              const processedImage = await fixImageOrientation(dataUrl, maxWidth, maxHeight);
+              
+              // Add properly oriented image
+              doc.addImage(
+                processedImage.dataUrl,
+                'JPEG',
+                90,
+                photoY,
+                processedImage.width,
+                processedImage.height
+              );
+              
+              photoY += processedImage.height + 10;
+              
+              if (photoY > 770) { 
+                doc.addPage(); 
+                photoY = 40; 
+              }
             } catch (e) {
+              console.error('Error processing question photo:', e);
               doc.setTextColor('#dc3545');
               doc.text('Photo could not be loaded', 90, photoY);
               doc.setTextColor('#222');
