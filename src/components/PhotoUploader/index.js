@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
 import { supabase } from '../../services/supabase';
+import { v4 as uuidv4 } from 'uuid';
 
 const PhotoUploader = ({ photos = [], onChange }) => {
   const fileInputRef = useRef(null);
@@ -14,11 +15,15 @@ const PhotoUploader = ({ photos = [], onChange }) => {
     try {
       const uploadPromises = files.map(async (file) => {
         try {
-          const filePath = `photos/${Date.now()}_${file.name}`;
-          // Use the correct bucket name 'puwer'
+          // Create a truly unique filename with UUID and timestamp
+          const uniqueId = uuidv4();
+          const timestamp = Date.now();
+          const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const filePath = `photos/${uniqueId}-${timestamp}-${safeFilename}`;
+          
           const bucketName = 'puwer';
           
-          console.log('Uploading file to Supabase:', file.name);
+          console.log('Uploading file to Supabase:', filePath);
           const { error } = await supabase.storage
             .from(bucketName)
             .upload(filePath, file);
