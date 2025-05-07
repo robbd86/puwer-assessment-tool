@@ -41,6 +41,7 @@ export const AssessmentProvider = ({ children }) => {
 
   // Create a new assessment in Supabase
   const createAssessment = async (assessmentData) => {
+    console.log('Creating assessment with data:', assessmentData);
     const { data, error } = await supabase
       .from('assessments')
       .insert([{ ...assessmentData, id: uuidv4() }])
