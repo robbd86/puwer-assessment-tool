@@ -1,40 +1,51 @@
 import React, { useRef, useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
 import { supabase } from '../../services/supabase';
-import { v4 as uuidv4 } from 'uuid';
 
 const PhotoUploader = ({ photos = [], onChange }) => {
   const fileInputRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // Generate a unique ID without using external packages
+  const generateUniqueId = () => {
+    return `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  };
 
   const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
+    
+    setUploading(true);
+    console.log('Starting upload for', files.length, 'files');
 
     try {
       const uploadPromises = files.map(async (file) => {
         try {
-          // Create a truly unique filename with UUID and timestamp
-          const uniqueId = uuidv4();
-          const timestamp = Date.now();
+          // Create a unique filename using timestamp and random string
+          const uniqueId = generateUniqueId();
           const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const filePath = `photos/${uniqueId}-${timestamp}-${safeFilename}`;
+          const filePath = `photos/${uniqueId}_${safeFilename}`;
           
-          const bucketName = 'puwer';
+          console.log('Uploading file to Supabase bucket "puwer":', filePath);
           
-          console.log('Uploading file to Supabase:', filePath);
           const { error } = await supabase.storage
-            .from(bucketName)
-            .upload(filePath, file);
+            .from('puwer')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
             
           if (error) {
             console.error('Supabase upload error:', error);
             throw error;
           }
           
+          console.log('File uploaded successfully, getting URL');
+          
           const { data: publicUrlData } = supabase.storage
-            .from(bucketName)
+            .from('puwer')
             .getPublicUrl(filePath);
             
           if (!publicUrlData || !publicUrlData.publicUrl) {
@@ -42,9 +53,10 @@ const PhotoUploader = ({ photos = [], onChange }) => {
             throw new Error('Failed to get public URL');
           }
           
-          console.log('File uploaded successfully, URL:', publicUrlData.publicUrl);
+          console.log('File URL:', publicUrlData.publicUrl);
+          
           return {
-            id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: generateUniqueId(),
             url: publicUrlData.publicUrl,
             name: file.name,
             type: file.type,
@@ -53,26 +65,26 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           };
         } catch (err) {
           console.error('Error uploading individual file:', err);
-          // Return a placeholder for failed uploads
           return null;
         }
       });
       
       const uploadedPhotos = await Promise.all(uploadPromises);
-      // Filter out any failed uploads (null values)
       const successfulUploads = uploadedPhotos.filter(photo => photo !== null);
       
       if (successfulUploads.length === 0) {
-        alert('Failed to upload photos. Please check console for errors.');
+        alert('Failed to upload photos. Check console for details.');
         return;
       }
       
+      console.log('Successfully uploaded', successfulUploads.length, 'photos');
       onChange([...photos, ...successfulUploads]);
-      event.target.value = '';
     } catch (error) {
       console.error('Error in overall upload process:', error);
-      alert('Failed to upload photos. Please try again.');
+      alert('Error uploading photos: ' + error.message);
+    } finally {
       event.target.value = '';
+      setUploading(false);
     }
   };
 
@@ -99,8 +111,9 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           variant="outline-primary" 
           size="sm"
           onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
         >
-          + Add Photos
+          {uploading ? 'Uploading...' : '+ Add Photos'}
         </Button>
         <input
           type="file"
@@ -109,6 +122,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           accept="image/*"
           multiple
           style={{ display: 'none' }}
+          disabled={uploading}
         />
       </div>
       {photos.length > 0 && (

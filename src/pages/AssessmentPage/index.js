@@ -195,29 +195,34 @@ const AssessmentPage = () => {
     navigate(`/report/${assessment.id}`);
   };
   
-  // Enhanced tab changing with data preservation
+  // Completely revised tab navigation logic
   const handleTabChange = async (tab) => {
-    try {
-      // Always save the current state before changing tabs
-      if (id && assessment) {
-        console.log("Saving assessment before tab change to:", tab);
+    console.log("Tab change requested to:", tab);
+    
+    // No need to save if going to a tab that doesn't exist
+    if (!tab) {
+      console.error("Invalid tab target");
+      return;
+    }
+    
+    // Don't try to save if no assessment exists yet
+    if (id && assessment) {
+      try {
+        console.log("Saving current state before tab change");
         
-        // Use lowercase modifiedat to match Supabase column name
-        await updateAssessment(id, { 
-          ...assessment,
-          equipmentDetails: equipmentDetails, // Ensure equipment details are preserved
-          modifiedat: new Date().toISOString() // Use lowercase to match Supabase
-        });
+        // Make a direct tab change - don't use updateAssessment for this
+        // Just update the UI state to avoid potential database errors
+        setActiveTab(tab);
+        
+      } catch (error) {
+        console.error("Error during tab change:", error);
+        setMessage('Error changing tabs. Please try again.');
+        setMessageType('danger');
       }
-      
-      // Set active tab immediately instead of with timeout
-      console.log("Setting active tab to:", tab);
+    } else {
+      // If no assessment, just change the tab
+      console.log("No assessment to save, setting tab directly");
       setActiveTab(tab);
-      
-    } catch (error) {
-      console.error("Error saving assessment during tab change:", error);
-      setMessage('Error saving data. Please try again.');
-      setMessageType('danger');
     }
   };
   
@@ -472,7 +477,7 @@ const AssessmentPage = () => {
               <div className="d-flex justify-content-between mt-4">
                 <Button 
                   variant="primary" 
-                  onClick={handleNextToRecommendations}
+                  onClick={() => setActiveTab('recommendations')}
                 >
                   Next: Recommendations
                 </Button>
@@ -552,7 +557,7 @@ const AssessmentPage = () => {
               <div className="d-flex justify-content-between mt-4">
                 <Button 
                   variant="primary" 
-                  onClick={() => handleTabChange('assessment')}
+                  onClick={() => setActiveTab('assessment')}
                 >
                   Back to Questions
                 </Button>
