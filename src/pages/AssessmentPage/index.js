@@ -132,7 +132,7 @@ const AssessmentPage = () => {
   };
   
   // Start or update assessment
-  const handleStartAssessment = () => {
+  const handleStartAssessment = async () => {
     if (!equipmentDetails.name || !equipmentDetails.assessor) {
       setMessage('Please enter equipment name and assessor name to continue.');
       setMessageType('danger');
@@ -143,11 +143,10 @@ const AssessmentPage = () => {
     
     if (!id) {
       // Create new assessment
-      const newId = createAssessment(equipmentDetails);
+      const newId = await createAssessment(equipmentDetails);
       navigate(`/assessment/${newId}`);
     } else {
-      // Update existing assessment
-      updateAssessment(id, { equipmentDetails });
+      await updateAssessment(id, { equipmentDetails });
       setActiveTab('assessment');
     }
   };
@@ -215,7 +214,7 @@ const AssessmentPage = () => {
   };
   
   // Direct form submission handler that simplifies the flow
-  const onSubmitEquipmentDetails = (data) => {
+  const onSubmitEquipmentDetails = async (data) => {
     console.log("Form submitted with data:", data);
     
     // Ensure we have required fields
@@ -231,17 +230,14 @@ const AssessmentPage = () => {
       if (!id) {
         // For new assessments, create directly with form data
         console.log("Creating new assessment with:", data);
-        const newId = createAssessment({
+        const newId = await createAssessment({
           ...data,
           nameplatePhotos // Include any uploaded photos
         });
         console.log("Created assessment with ID:", newId);
-        
-        // Direct navigation to the new assessment
-        window.location.href = `/assessment/${newId}`;
+        navigate(`/assessment/${newId}`);
       } else {
-        // For existing assessments, update and switch tab
-        updateAssessment(id, { 
+        await updateAssessment(id, { 
           equipmentDetails: {
             ...data,
             nameplatePhotos
