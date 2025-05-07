@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Form, Button } from 'react-bootstrap';
 import { useAssessment } from '../../contexts/AssessmentContext';
 import { getQuestionHelp } from '../../services/mcpService';
@@ -6,12 +6,19 @@ import PhotoUploader from '../PhotoUploader';
 
 const QuestionCard = ({ question, assessmentId, value = {} }) => {
   const { saveAnswer } = useAssessment();
-  const [answer, setAnswer] = useState(value.answer || '');
-  const [comments, setComments] = useState(value.comments || '');
-  const [photos, setPhotos] = useState(value.photos || []);
+  const [answer, setAnswer] = useState(value?.answer || '');
+  const [comments, setComments] = useState(value?.comments || '');
+  const [photos, setPhotos] = useState(value?.photos || []);
   const [showHelp, setShowHelp] = useState(false);
   const [helpText, setHelpText] = useState('');
   const [loadingHelp, setLoadingHelp] = useState(false);
+
+  // Defensive: ensure value is always an object
+  useEffect(() => {
+    setAnswer(value?.answer || '');
+    setComments(value?.comments || '');
+    setPhotos(value?.photos || []);
+  }, [value]);
   
   // Handle answer selection (yes, no, na)
   const handleAnswerChange = (e) => {

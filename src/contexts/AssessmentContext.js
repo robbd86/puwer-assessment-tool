@@ -17,7 +17,7 @@ export const AssessmentProvider = ({ children }) => {
       const { data, error } = await supabase
         .from('assessments')
         .select('*')
-        .order('createdAt', { ascending: false });
+        .order('createdat', { ascending: false }); // use lowercase column name
       if (error) {
         console.error('Error loading assessments:', error);
       } else {
@@ -56,7 +56,7 @@ export const AssessmentProvider = ({ children }) => {
   const updateAssessment = async (id, data) => {
     const { data: updated, error } = await supabase
       .from('assessments')
-      .update({ ...data, modifiedAt: new Date().toISOString() })
+      .update({ ...data, modifiedat: new Date().toISOString() }) // use lowercase column name
       .eq('id', id)
       .select()
       .single();
