@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
-import { storage } from '../../services/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '../../services/supabase';
 
 const PhotoUploader = ({ photos = [], onChange }) => {
   const fileInputRef = useRef(null);
@@ -13,12 +12,17 @@ const PhotoUploader = ({ photos = [], onChange }) => {
     if (files.length === 0) return;
 
     const uploadPromises = files.map(async (file) => {
-      const storageRef = ref(storage, `photos/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const filePath = `photos/${Date.now()}_${file.name}`;
+      const { error } = await supabase.storage
+        .from('puwer-photos') // replace with your bucket name
+        .upload(filePath, file);
+      if (error) throw error;
+      const { data: publicUrlData } = supabase.storage
+        .from('puwer-photos')
+        .getPublicUrl(filePath);
       return {
         id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        url,
+        url: publicUrlData.publicUrl,
         name: file.name,
         type: file.type,
         size: file.size,
