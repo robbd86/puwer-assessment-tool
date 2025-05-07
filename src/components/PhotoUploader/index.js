@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Button, Modal, Alert } from 'react-bootstrap';
-import { supabase } from '../../services/supabase';
+import { Button, Modal, Alert, Spinner } from 'react-bootstrap';
 import './styles.css';
 
 const PhotoUploader = ({ photos = [], onChange }) => {
@@ -10,7 +9,16 @@ const PhotoUploader = ({ photos = [], onChange }) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Simpler approach: store file data locally without uploading to Supabase
+  // Convert file to base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
@@ -21,27 +29,23 @@ const PhotoUploader = ({ photos = [], onChange }) => {
     try {
       const newPhotos = [];
       
-      // Process each file
       for (const file of files) {
         try {
-          // Create a unique ID for the photo
-          const timestamp = new Date().getTime();
-          const randomStr = Math.random().toString(36).substring(2, 10);
-          const id = `photo_${timestamp}_${randomStr}`;
+          // Generate a simple ID
+          const id = `photo_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
           
-          // Create a local URL for the file
-          const url = URL.createObjectURL(file);
+          // Convert file to base64
+          const base64 = await fileToBase64(file);
           
-          console.log(`Created local URL: ${url}`);
+          console.log(`File converted to base64: ${file.name} (${Math.round(base64.length / 1024)} KB)`);
           
-          // Add to our new photos array
           newPhotos.push({
             id,
-            url,
+            url: base64,
+            dataUrl: base64, // For backward compatibility with any code using dataUrl
             name: file.name,
             type: file.type,
             size: file.size,
-            file, // Store the original file
             timestamp: new Date().toISOString()
           });
         } catch (err) {
@@ -66,13 +70,6 @@ const PhotoUploader = ({ photos = [], onChange }) => {
   };
 
   const handleRemovePhoto = (photoId) => {
-    const photoToRemove = photos.find(p => p.id === photoId);
-    
-    // Revoke object URL if it exists to prevent memory leaks
-    if (photoToRemove && photoToRemove.url && photoToRemove.url.startsWith('blob:')) {
-      URL.revokeObjectURL(photoToRemove.url);
-    }
-    
     const updatedPhotos = photos.filter(photo => photo.id !== photoId);
     onChange(updatedPhotos);
   };
@@ -103,7 +100,12 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
         >
-          {uploading ? 'Adding...' : '+ Add Photos'}
+          {uploading ? (
+            <>
+              <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+              <span className="ms-1">Processing...</span>
+            </>
+          ) : '+ Add Photos'}
         </Button>
         <input
           type="file"
