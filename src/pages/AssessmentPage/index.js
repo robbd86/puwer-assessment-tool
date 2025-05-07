@@ -142,8 +142,15 @@ const AssessmentPage = () => {
     setMessage('');
     
     if (!id) {
-      // For new assessments, wrap details in equipmentDetails
-      const newId = await createAssessment({ equipmentDetails });
+      // For new assessments, include all required fields
+      const newId = await createAssessment({
+        equipmentDetails,
+        answers: {},
+        recommendations: [],
+        createdat: new Date().toISOString(),
+        modifiedat: new Date().toISOString(),
+        completed: false
+      });
       navigate(`/assessment/${newId}`);
     } else {
       await updateAssessment(id, { equipmentDetails });
@@ -228,12 +235,17 @@ const AssessmentPage = () => {
       setMessage('');
       
       if (!id) {
-        // For new assessments, wrap details in equipmentDetails
+        // For new assessments, include all required fields
         const newId = await createAssessment({
           equipmentDetails: {
             ...data,
             nameplatePhotos
-          }
+          },
+          answers: {},
+          recommendations: [],
+          createdat: new Date().toISOString(),
+          modifiedat: new Date().toISOString(),
+          completed: false
         });
         console.log("Created assessment with ID:", newId);
         navigate(`/assessment/${newId}`);
