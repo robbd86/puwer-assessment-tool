@@ -142,8 +142,8 @@ const AssessmentPage = () => {
     setMessage('');
     
     if (!id) {
-      // Create new assessment
-      const newId = await createAssessment(equipmentDetails);
+      // For new assessments, wrap details in equipmentDetails
+      const newId = await createAssessment({ equipmentDetails });
       navigate(`/assessment/${newId}`);
     } else {
       await updateAssessment(id, { equipmentDetails });
@@ -228,11 +228,12 @@ const AssessmentPage = () => {
       setMessage('');
       
       if (!id) {
-        // For new assessments, create directly with form data
-        console.log("Creating new assessment with:", data);
+        // For new assessments, wrap details in equipmentDetails
         const newId = await createAssessment({
-          ...data,
-          nameplatePhotos // Include any uploaded photos
+          equipmentDetails: {
+            ...data,
+            nameplatePhotos
+          }
         });
         console.log("Created assessment with ID:", newId);
         navigate(`/assessment/${newId}`);
