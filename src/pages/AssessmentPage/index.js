@@ -196,22 +196,23 @@ const AssessmentPage = () => {
   };
   
   // Enhanced tab changing with data preservation
-  const handleTabChange = (tab) => {
+  const handleTabChange = async (tab) => {
     try {
       // Always save the current state before changing tabs
       if (id && assessment) {
-        console.log("Saving assessment before tab change:", assessment);
-        updateAssessment(id, { 
+        console.log("Saving assessment before tab change to:", tab);
+        
+        // Use lowercase modifiedat to match Supabase column name
+        await updateAssessment(id, { 
           ...assessment,
           equipmentDetails: equipmentDetails, // Ensure equipment details are preserved
-          modifiedAt: new Date().toISOString()
+          modifiedat: new Date().toISOString() // Use lowercase to match Supabase
         });
       }
       
-      // Set the active tab with a small delay to ensure state updates
-      setTimeout(() => {
-        setActiveTab(tab);
-      }, 100);
+      // Set active tab immediately instead of with timeout
+      console.log("Setting active tab to:", tab);
+      setActiveTab(tab);
       
     } catch (error) {
       console.error("Error saving assessment during tab change:", error);
@@ -268,20 +269,25 @@ const AssessmentPage = () => {
   };
   
   // Updated Next to Recommendations handler
-  const handleNextToRecommendations = () => {
+  const handleNextToRecommendations = async () => {
     if (id && assessment) {
       try {
-        // Force update the assessment with current data
-        updateAssessment(id, { 
+        console.log("Moving to recommendations tab");
+        
+        // Force update the assessment with current data - use lowercase modifiedat
+        await updateAssessment(id, { 
           ...assessment,
           equipmentDetails: equipmentDetails, // Explicitly include equipment details
-          modifiedAt: new Date().toISOString() 
+          modifiedat: new Date().toISOString() // Use lowercase to match Supabase
         });
         
-        // Show a success message and change tabs
+        // Show a success message
         setMessage('Assessment saved successfully');
         setMessageType('success');
-        handleTabChange('recommendations');
+        
+        // Directly set the active tab instead of using handleTabChange
+        console.log("Setting active tab to recommendations");
+        setActiveTab('recommendations');
         
       } catch (error) {
         console.error("Error saving assessment:", error);
@@ -290,7 +296,8 @@ const AssessmentPage = () => {
       }
     } else {
       // Just change tabs if no assessment
-      handleTabChange('recommendations');
+      console.log("No assessment, directly setting tab");
+      setActiveTab('recommendations');
     }
   };
   

@@ -11,27 +11,64 @@ const PhotoUploader = ({ photos = [], onChange }) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
 
-    const uploadPromises = files.map(async (file) => {
-      const filePath = `photos/${Date.now()}_${file.name}`;
-      const { error } = await supabase.storage
-        .from('puwer-photos') // replace with your bucket name
-        .upload(filePath, file);
-      if (error) throw error;
-      const { data: publicUrlData } = supabase.storage
-        .from('puwer-photos')
-        .getPublicUrl(filePath);
-      return {
-        id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        url: publicUrlData.publicUrl,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        timestamp: new Date().toISOString()
-      };
-    });
-    const newPhotos = await Promise.all(uploadPromises);
-    onChange([...photos, ...newPhotos]);
-    event.target.value = '';
+    try {
+      const uploadPromises = files.map(async (file) => {
+        try {
+          const filePath = `photos/${Date.now()}_${file.name}`;
+          // Use the correct bucket name 'puwer'
+          const bucketName = 'puwer';
+          
+          console.log('Uploading file to Supabase:', file.name);
+          const { error } = await supabase.storage
+            .from(bucketName)
+            .upload(filePath, file);
+            
+          if (error) {
+            console.error('Supabase upload error:', error);
+            throw error;
+          }
+          
+          const { data: publicUrlData } = supabase.storage
+            .from(bucketName)
+            .getPublicUrl(filePath);
+            
+          if (!publicUrlData || !publicUrlData.publicUrl) {
+            console.error('Failed to get public URL for uploaded file');
+            throw new Error('Failed to get public URL');
+          }
+          
+          console.log('File uploaded successfully, URL:', publicUrlData.publicUrl);
+          return {
+            id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            url: publicUrlData.publicUrl,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            timestamp: new Date().toISOString()
+          };
+        } catch (err) {
+          console.error('Error uploading individual file:', err);
+          // Return a placeholder for failed uploads
+          return null;
+        }
+      });
+      
+      const uploadedPhotos = await Promise.all(uploadPromises);
+      // Filter out any failed uploads (null values)
+      const successfulUploads = uploadedPhotos.filter(photo => photo !== null);
+      
+      if (successfulUploads.length === 0) {
+        alert('Failed to upload photos. Please check console for errors.');
+        return;
+      }
+      
+      onChange([...photos, ...successfulUploads]);
+      event.target.value = '';
+    } catch (error) {
+      console.error('Error in overall upload process:', error);
+      alert('Failed to upload photos. Please try again.');
+      event.target.value = '';
+    }
   };
 
   const handleRemovePhoto = (photoId) => {
