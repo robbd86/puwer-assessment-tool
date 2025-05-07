@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button, Modal, Alert } from 'react-bootstrap';
 import { supabase } from '../../services/supabase';
-import './styles.css'; // This will be created in the next step
+import './styles.css';
 
 const PhotoUploader = ({ photos = [], onChange }) => {
   const fileInputRef = useRef(null);
@@ -10,6 +10,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Simpler approach: store file data locally without uploading to Supabase
   const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
@@ -20,62 +21,44 @@ const PhotoUploader = ({ photos = [], onChange }) => {
     try {
       const newPhotos = [];
       
+      // Process each file
       for (const file of files) {
         try {
-          // Create simpler filenames
+          // Create a unique ID for the photo
           const timestamp = new Date().getTime();
           const randomStr = Math.random().toString(36).substring(2, 10);
-          const filename = `${timestamp}_${randomStr}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          const id = `photo_${timestamp}_${randomStr}`;
           
-          console.log(`Uploading ${filename} to Supabase...`);
+          // Create a local URL for the file
+          const url = URL.createObjectURL(file);
           
-          // Upload with simpler options
-          const { data, error: uploadError } = await supabase.storage
-            .from('puwer')
-            .upload(`photos/${filename}`, file, {
-              upsert: true // Changed to true to overwrite if exists
-            });
-            
-          if (uploadError) {
-            console.error('Upload error:', uploadError);
-            throw uploadError;
-          }
+          console.log(`Created local URL: ${url}`);
           
-          // Get URL with simpler approach
-          const { data: urlData } = supabase.storage
-            .from('puwer')
-            .getPublicUrl(`photos/${filename}`);
-            
-          if (!urlData || !urlData.publicUrl) {
-            throw new Error('Could not get public URL');
-          }
-          
-          console.log('Successfully uploaded, URL:', urlData.publicUrl);
-          
-          // Add to our new photos
+          // Add to our new photos array
           newPhotos.push({
-            id: `photo_${timestamp}_${randomStr}`,
-            url: urlData.publicUrl,
+            id,
+            url,
             name: file.name,
             type: file.type,
             size: file.size,
+            file, // Store the original file
             timestamp: new Date().toISOString()
           });
         } catch (err) {
-          console.error('Error with file:', file.name, err);
-          setError(`Error uploading ${file.name}: ${err.message || 'Unknown error'}`);
+          console.error('Error processing file:', file.name, err);
+          setError(`Error processing ${file.name}: ${err.message || 'Unknown error'}`);
         }
       }
       
       if (newPhotos.length > 0) {
-        console.log(`Successfully uploaded ${newPhotos.length} photos`);
+        console.log(`Successfully added ${newPhotos.length} photos`);
         onChange([...photos, ...newPhotos]);
       } else {
-        setError('No files were uploaded successfully. Check browser console for details.');
+        setError('No files were added. Please try again.');
       }
     } catch (e) {
-      console.error('Overall upload error:', e);
-      setError('Error during upload: ' + (e.message || 'Unknown error'));
+      console.error('Error handling files:', e);
+      setError('Error adding photos: ' + (e.message || 'Unknown error'));
     } finally {
       event.target.value = ''; // Clear input
       setUploading(false);
@@ -83,6 +66,13 @@ const PhotoUploader = ({ photos = [], onChange }) => {
   };
 
   const handleRemovePhoto = (photoId) => {
+    const photoToRemove = photos.find(p => p.id === photoId);
+    
+    // Revoke object URL if it exists to prevent memory leaks
+    if (photoToRemove && photoToRemove.url && photoToRemove.url.startsWith('blob:')) {
+      URL.revokeObjectURL(photoToRemove.url);
+    }
+    
     const updatedPhotos = photos.filter(photo => photo.id !== photoId);
     onChange(updatedPhotos);
   };
@@ -113,7 +103,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
         >
-          {uploading ? 'Uploading...' : '+ Add Photos'}
+          {uploading ? 'Adding...' : '+ Add Photos'}
         </Button>
         <input
           type="file"
@@ -132,7 +122,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
             <div key={photo.id} className="photo-item">
               <img 
                 src={photo.url} 
-                alt="Evidence" 
+                alt={photo.name || "Evidence"}
                 className="photo-thumbnail" 
                 onClick={() => handleShowPreview(photo)}
               />
@@ -157,7 +147,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           {previewImage && (
             <img
               src={previewImage.url}
-              alt="Evidence"
+              alt={previewImage.name || "Evidence"}
               style={{ 
                 maxWidth: '100%', 
                 maxHeight: '70vh'
