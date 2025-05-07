@@ -1,89 +1,83 @@
 import React, { useRef, useState } from 'react';
-import { Button, Modal } from 'react-bootstrap';
+import { Button, Modal, Alert } from 'react-bootstrap';
 import { supabase } from '../../services/supabase';
+import './styles.css'; // This will be created in the next step
 
 const PhotoUploader = ({ photos = [], onChange }) => {
   const fileInputRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
-
-  // Generate a unique ID without using external packages
-  const generateUniqueId = () => {
-    return `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-  };
+  const [error, setError] = useState(null);
 
   const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
     
     setUploading(true);
-    console.log('Starting upload for', files.length, 'files');
-
+    setError(null);
+    
     try {
-      const uploadPromises = files.map(async (file) => {
+      const newPhotos = [];
+      
+      for (const file of files) {
         try {
-          // Create a unique filename using timestamp and random string
-          const uniqueId = generateUniqueId();
-          const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const filePath = `photos/${uniqueId}_${safeFilename}`;
+          // Create simpler filenames
+          const timestamp = new Date().getTime();
+          const randomStr = Math.random().toString(36).substring(2, 10);
+          const filename = `${timestamp}_${randomStr}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
           
-          console.log('Uploading file to Supabase bucket "puwer":', filePath);
+          console.log(`Uploading ${filename} to Supabase...`);
           
-          const { error } = await supabase.storage
+          // Upload with simpler options
+          const { data, error: uploadError } = await supabase.storage
             .from('puwer')
-            .upload(filePath, file, {
-              cacheControl: '3600',
-              upsert: false
+            .upload(`photos/${filename}`, file, {
+              upsert: true // Changed to true to overwrite if exists
             });
             
-          if (error) {
-            console.error('Supabase upload error:', error);
-            throw error;
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            throw uploadError;
           }
           
-          console.log('File uploaded successfully, getting URL');
-          
-          const { data: publicUrlData } = supabase.storage
+          // Get URL with simpler approach
+          const { data: urlData } = supabase.storage
             .from('puwer')
-            .getPublicUrl(filePath);
+            .getPublicUrl(`photos/${filename}`);
             
-          if (!publicUrlData || !publicUrlData.publicUrl) {
-            console.error('Failed to get public URL for uploaded file');
-            throw new Error('Failed to get public URL');
+          if (!urlData || !urlData.publicUrl) {
+            throw new Error('Could not get public URL');
           }
           
-          console.log('File URL:', publicUrlData.publicUrl);
+          console.log('Successfully uploaded, URL:', urlData.publicUrl);
           
-          return {
-            id: generateUniqueId(),
-            url: publicUrlData.publicUrl,
+          // Add to our new photos
+          newPhotos.push({
+            id: `photo_${timestamp}_${randomStr}`,
+            url: urlData.publicUrl,
             name: file.name,
             type: file.type,
             size: file.size,
             timestamp: new Date().toISOString()
-          };
+          });
         } catch (err) {
-          console.error('Error uploading individual file:', err);
-          return null;
+          console.error('Error with file:', file.name, err);
+          setError(`Error uploading ${file.name}: ${err.message || 'Unknown error'}`);
         }
-      });
-      
-      const uploadedPhotos = await Promise.all(uploadPromises);
-      const successfulUploads = uploadedPhotos.filter(photo => photo !== null);
-      
-      if (successfulUploads.length === 0) {
-        alert('Failed to upload photos. Check console for details.');
-        return;
       }
       
-      console.log('Successfully uploaded', successfulUploads.length, 'photos');
-      onChange([...photos, ...successfulUploads]);
-    } catch (error) {
-      console.error('Error in overall upload process:', error);
-      alert('Error uploading photos: ' + error.message);
+      if (newPhotos.length > 0) {
+        console.log(`Successfully uploaded ${newPhotos.length} photos`);
+        onChange([...photos, ...newPhotos]);
+      } else {
+        setError('No files were uploaded successfully. Check browser console for details.');
+      }
+    } catch (e) {
+      console.error('Overall upload error:', e);
+      setError('Error during upload: ' + (e.message || 'Unknown error'));
     } finally {
-      event.target.value = '';
+      event.target.value = ''; // Clear input
       setUploading(false);
     }
   };
@@ -104,7 +98,13 @@ const PhotoUploader = ({ photos = [], onChange }) => {
   };
 
   return (
-    <div>
+    <div className="photo-uploader">
+      {error && (
+        <Alert variant="danger" onClose={() => setError(null)} dismissible>
+          {error}
+        </Alert>
+      )}
+      
       <div className="d-flex justify-content-between align-items-center mb-2">
         <div><strong>Evidence Photos:</strong> {photos.length > 0 && `(${photos.length})`}</div>
         <Button 
@@ -125,10 +125,11 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           disabled={uploading}
         />
       </div>
+      
       {photos.length > 0 && (
         <div className="photos-container">
           {photos.map(photo => (
-            <div key={photo.id} className="position-relative">
+            <div key={photo.id} className="photo-item">
               <img 
                 src={photo.url} 
                 alt="Evidence" 
@@ -138,8 +139,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
               <Button
                 variant="danger"
                 size="sm"
-                className="position-absolute top-0 end-0"
-                style={{ padding: '0 4px', fontSize: '10px' }}
+                className="photo-delete-btn"
                 onClick={() => handleRemovePhoto(photo.id)}
               >
                 ×
@@ -148,6 +148,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           ))}
         </div>
       )}
+      
       <Modal show={showPreview} onHide={handleClosePreview} centered size="lg">
         <Modal.Header closeButton>
           <Modal.Title>{previewImage?.name || 'Photo Evidence'}</Modal.Title>
