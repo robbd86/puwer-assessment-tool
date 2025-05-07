@@ -52,17 +52,10 @@ export const AssessmentProvider = ({ children }) => {
   }, []);
 
   // Create a new assessment in Firestore
-  const createAssessment = async (equipmentDetails) => {
-    const newAssessment = {
-      equipmentDetails,
-      answers: {},
-      recommendations: [],
-      createdAt: new Date().toISOString(),
-      modifiedAt: new Date().toISOString(),
-      completed: false
-    };
-    const docRef = await addDoc(collection(db, 'assessments'), newAssessment);
-    const created = { id: docRef.id, ...newAssessment };
+  const createAssessment = async (assessmentData) => {
+    // assessmentData should be the full assessment object (not just equipmentDetails)
+    const docRef = await addDoc(collection(db, 'assessments'), assessmentData);
+    const created = { id: docRef.id, ...assessmentData };
     setAssessments(prev => [created, ...prev]);
     return docRef.id;
   };
