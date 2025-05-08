@@ -418,7 +418,7 @@ const AssessmentPage = () => {
                 <Button 
                   variant="primary" 
                   type="submit"
-                  disabled={Object.keys(errors).length > 0}
+                  disabled={!isValid}
                 >
                   {id ? 'Update Details & Continue' : 'Start Assessment'}
                 </Button>
