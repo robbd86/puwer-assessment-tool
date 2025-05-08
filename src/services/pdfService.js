@@ -1,14 +1,24 @@
 import { jsPDF } from 'jspdf';
 
 // Helper to fetch image as data URL
-async function fetchImageAsDataURL(url) {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.readAsDataURL(blob);
-  });
+export async function fetchImageAsDataURL(url) {
+  // If the url is already a data URL, just return it
+  if (url && url.startsWith('data:')) {
+    return url;
+  }
+
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error fetching image:', error);
+    throw error;
+  }
 }
 
 // Helper function to fix image orientation
@@ -55,7 +65,7 @@ async function fixImageOrientation(dataUrl, maxWidth, maxHeight) {
   });
 }
 
-// Modernized and async: embed photos
+// Generate PDF from assessment data
 export const generatePDF = async (assessment, questions) => {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -74,10 +84,10 @@ export const generatePDF = async (assessment, questions) => {
   doc.setFontSize(12);
   doc.setTextColor('#222');
   doc.setFont('helvetica', 'normal');
-  doc.text(`Equipment: ${assessment.equipmentDetails.name || 'Not specified'}`, 40, y);
-  doc.text(`Location: ${assessment.equipmentDetails.location || 'Not specified'}`, 40, y + 18);
-  doc.text(`Reference: ${assessment.equipmentDetails.reference || 'Not specified'}`, 40, y + 36);
-  doc.text(`Assessor: ${assessment.equipmentDetails.assessor || 'Not specified'}`, 40, y + 54);
+  doc.text(`Equipment: ${assessment.equipmentDetails?.name || 'Not specified'}`, 40, y);
+  doc.text(`Location: ${assessment.equipmentDetails?.location || 'Not specified'}`, 40, y + 18);
+  doc.text(`Reference: ${assessment.equipmentDetails?.reference || 'Not specified'}`, 40, y + 36);
+  doc.text(`Assessor: ${assessment.equipmentDetails?.assessor || 'Not specified'}`, 40, y + 54);
   doc.text(`Date: ${new Date(assessment.createdAt).toLocaleDateString()}`, 40, y + 72);
   y += 100;
 
@@ -109,9 +119,12 @@ export const generatePDF = async (assessment, questions) => {
         const maxPhotoWidth = 140;
         const maxPhotoHeight = 105;
         
+        // Get the data URL for the photo - use dataUrl if available or fetch from url
+        const imageDataUrl = photo.dataUrl || await fetchImageAsDataURL(photo.url);
+        
         // Process the image to fix orientation and maintain aspect ratio
         const processedImage = await fixImageOrientation(
-          photo.dataUrl, 
+          imageDataUrl, 
           maxPhotoWidth, 
           maxPhotoHeight
         );
@@ -150,11 +163,11 @@ export const generatePDF = async (assessment, questions) => {
 
   // Summary box
   const totalQuestions = questions.length;
-  const answered = Object.keys(assessment.answers).length;
+  const answered = Object.keys(assessment.answers || {}).length;
   const completion = totalQuestions ? Math.round((answered / totalQuestions) * 100) : 0;
-  const yes = Object.values(assessment.answers).filter(a => a.answer === 'yes').length;
-  const no = Object.values(assessment.answers).filter(a => a.answer === 'no').length;
-  const na = Object.values(assessment.answers).filter(a => a.answer === 'na').length;
+  const yes = Object.values(assessment.answers || {}).filter(a => a.answer === 'yes').length;
+  const no = Object.values(assessment.answers || {}).filter(a => a.answer === 'no').length;
+  const na = Object.values(assessment.answers || {}).filter(a => a.answer === 'na').length;
   doc.setFillColor('#f8f9fa');
   doc.roundedRect(30, y, pageWidth - 60, 60, 8, 8, 'F');
   doc.setFontSize(13);
@@ -312,6 +325,6 @@ export const generatePDF = async (assessment, questions) => {
  * @param {Object} assessment - The assessment object
  */
 export const savePDF = (doc, assessment) => {
-  const filename = `PUWER_Assessment_${assessment.equipmentDetails.name || 'Unnamed'}_${new Date().toISOString().split('T')[0]}.pdf`;
+  const filename = `PUWER_Assessment_${assessment.equipmentDetails?.name || 'Unnamed'}_${new Date().toISOString().split('T')[0]}.pdf`;
   doc.save(filename);
 };

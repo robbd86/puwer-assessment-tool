@@ -9,7 +9,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleFileSelect = (event) => {
+  const handleFileSelect = async (event) => {
     try {
       const files = Array.from(event.target.files || []);
       if (files.length === 0) return;
@@ -17,18 +17,22 @@ const PhotoUploader = ({ photos = [], onChange }) => {
       setIsLoading(true);
       setErrorMessage('');
       
-      // Create an array to store temporary photos
+      // Create an array to store temp photos
       const tempPhotos = [];
       
       // Process each file one by one
-      files.forEach(file => {
-        // Create a local URL
+      for (const file of files) {
+        // Convert to data URL for persistence
+        const dataUrl = await readFileAsDataURL(file);
+        
+        // Create a local URL for preview
         const localUrl = URL.createObjectURL(file);
         
         // Create a new photo object
         const newPhoto = {
           id: `photo_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-          url: localUrl,
+          url: localUrl, // For preview
+          dataUrl: dataUrl, // For storage
           name: file.name,
           size: file.size,
           type: file.type,
@@ -37,7 +41,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
         
         // Add it to our temp photos array
         tempPhotos.push(newPhoto);
-      });
+      }
       
       // Add all processed photos to the existing photos
       onChange([...photos, ...tempPhotos]);
@@ -50,6 +54,16 @@ const PhotoUploader = ({ photos = [], onChange }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper function to read a file as data URL
+  const readFileAsDataURL = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleRemovePhoto = (photoId) => {
@@ -116,7 +130,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           {photos.map(photo => (
             <div key={photo.id} className="photo-item">
               <img
-                src={photo.url}
+                src={photo.url || photo.dataUrl}
                 alt={photo.name || "Photo evidence"}
                 className="photo-thumbnail"
                 onClick={() => handleShowPreview(photo)}
@@ -141,7 +155,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
         <Modal.Body className="text-center">
           {previewImage && (
             <img
-              src={previewImage.url}
+              src={previewImage.url || previewImage.dataUrl}
               alt={previewImage.name || "Evidence photo"}
               style={{ maxWidth: '100%', maxHeight: '70vh' }}
             />

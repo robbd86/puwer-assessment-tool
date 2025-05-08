@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Container, 
@@ -62,6 +62,9 @@ const AssessmentPage = () => {
     }
   });
   
+  // Refs
+  const updateTimeout = useRef(null);
+  
   // Load questions from CSV if not already loaded
   useEffect(() => {
     if (questions.length === 0) {
@@ -98,11 +101,26 @@ const AssessmentPage = () => {
   
   // Keep equipmentDetails.nameplatePhotos in sync
   useEffect(() => {
-    setEquipmentDetails(prev => ({ ...prev, nameplatePhotos }));
-    if (id) {
-      updateAssessment(id, { equipmentDetails: { ...equipmentDetails, nameplatePhotos } });
+    if (nameplatePhotos?.length >= 0) {
+      // Use functional update to avoid stale state issues
+      setEquipmentDetails(prev => {
+        const updatedDetails = { ...prev, nameplatePhotos };
+        
+        // Only update in Supabase if we have an assessment ID
+        if (id) {
+          // Use a timeout to batch updates and reduce API calls
+          if (updateTimeout.current) clearTimeout(updateTimeout.current);
+          updateTimeout.current = setTimeout(() => {
+            updateAssessment(id, { 
+              equipmentDetails: updatedDetails
+            });
+          }, 500);
+        }
+        
+        return updatedDetails;
+      });
     }
-  }, [nameplatePhotos]);
+  }, [nameplatePhotos, id]);
   
   // Update form values when equipment details change
   useEffect(() => {
