@@ -6,71 +6,63 @@ const PhotoUploader = ({ photos = [], onChange }) => {
   const fileInputRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Convert file to base64
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const handleFileSelect = async (event) => {
-    const files = Array.from(event.target.files);
-    if (files.length === 0) return;
-    
-    setUploading(true);
-    setError(null);
-    
+  const handleFileSelect = (event) => {
     try {
-      const newPhotos = [];
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
       
-      for (const file of files) {
-        try {
-          // Generate a simple ID
-          const id = `photo_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-          
-          // Convert file to base64
-          const base64 = await fileToBase64(file);
-          
-          console.log(`File converted to base64: ${file.name} (${Math.round(base64.length / 1024)} KB)`);
-          
-          newPhotos.push({
-            id,
-            url: base64,
-            dataUrl: base64, // For backward compatibility with any code using dataUrl
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            timestamp: new Date().toISOString()
-          });
-        } catch (err) {
-          console.error('Error processing file:', file.name, err);
-          setError(`Error processing ${file.name}: ${err.message || 'Unknown error'}`);
-        }
-      }
+      setIsLoading(true);
+      setErrorMessage('');
       
-      if (newPhotos.length > 0) {
-        console.log(`Successfully added ${newPhotos.length} photos`);
-        onChange([...photos, ...newPhotos]);
-      } else {
-        setError('No files were added. Please try again.');
-      }
-    } catch (e) {
-      console.error('Error handling files:', e);
-      setError('Error adding photos: ' + (e.message || 'Unknown error'));
+      // Create an array to store temporary photos
+      const tempPhotos = [];
+      
+      // Process each file one by one
+      files.forEach(file => {
+        // Create a local URL
+        const localUrl = URL.createObjectURL(file);
+        
+        // Create a new photo object
+        const newPhoto = {
+          id: `photo_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+          url: localUrl,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          createdAt: new Date().toISOString()
+        };
+        
+        // Add it to our temp photos array
+        tempPhotos.push(newPhoto);
+      });
+      
+      // Add all processed photos to the existing photos
+      onChange([...photos, ...tempPhotos]);
+      
+      // Clear the file input
+      event.target.value = '';
+    } catch (error) {
+      console.error('Error processing photos:', error);
+      setErrorMessage('Failed to process photos. Please try a different image.');
     } finally {
-      event.target.value = ''; // Clear input
-      setUploading(false);
+      setIsLoading(false);
     }
   };
 
   const handleRemovePhoto = (photoId) => {
-    const updatedPhotos = photos.filter(photo => photo.id !== photoId);
+    // Find the photo to remove
+    const photoToRemove = photos.find(p => p.id === photoId);
+    
+    // If it has a blob URL, revoke it to prevent memory leaks
+    if (photoToRemove && photoToRemove.url && photoToRemove.url.startsWith('blob:')) {
+      URL.revokeObjectURL(photoToRemove.url);
+    }
+    
+    // Remove from the photos array
+    const updatedPhotos = photos.filter(p => p.id !== photoId);
     onChange(updatedPhotos);
   };
 
@@ -86,35 +78,36 @@ const PhotoUploader = ({ photos = [], onChange }) => {
 
   return (
     <div className="photo-uploader">
-      {error && (
-        <Alert variant="danger" onClose={() => setError(null)} dismissible>
-          {error}
+      {errorMessage && (
+        <Alert variant="danger" dismissible onClose={() => setErrorMessage('')}>
+          {errorMessage}
         </Alert>
       )}
       
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <div><strong>Evidence Photos:</strong> {photos.length > 0 && `(${photos.length})`}</div>
-        <Button 
-          variant="outline-primary" 
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <strong>Evidence Photos:</strong> {photos.length > 0 && `(${photos.length})`}
+        </div>
+        <Button
+          variant="outline-primary"
           size="sm"
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+          disabled={isLoading}
         >
-          {uploading ? (
+          {isLoading ? (
             <>
-              <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
-              <span className="ms-1">Processing...</span>
+              <Spinner as="span" size="sm" animation="border" role="status" aria-hidden="true" />
+              <span className="ms-2">Processing...</span>
             </>
           ) : '+ Add Photos'}
         </Button>
         <input
           type="file"
-          ref={fileInputRef}
-          onChange={handleFileSelect}
-          accept="image/*"
           multiple
+          accept="image/*"
+          onChange={handleFileSelect}
+          ref={fileInputRef}
           style={{ display: 'none' }}
-          disabled={uploading}
         />
       </div>
       
@@ -122,10 +115,10 @@ const PhotoUploader = ({ photos = [], onChange }) => {
         <div className="photos-container">
           {photos.map(photo => (
             <div key={photo.id} className="photo-item">
-              <img 
-                src={photo.url} 
-                alt={photo.name || "Evidence"}
-                className="photo-thumbnail" 
+              <img
+                src={photo.url}
+                alt={photo.name || "Photo evidence"}
+                className="photo-thumbnail"
                 onClick={() => handleShowPreview(photo)}
               />
               <Button
@@ -140,7 +133,7 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           ))}
         </div>
       )}
-      
+
       <Modal show={showPreview} onHide={handleClosePreview} centered size="lg">
         <Modal.Header closeButton>
           <Modal.Title>{previewImage?.name || 'Photo Evidence'}</Modal.Title>
@@ -149,11 +142,8 @@ const PhotoUploader = ({ photos = [], onChange }) => {
           {previewImage && (
             <img
               src={previewImage.url}
-              alt={previewImage.name || "Evidence"}
-              style={{ 
-                maxWidth: '100%', 
-                maxHeight: '70vh'
-              }}
+              alt={previewImage.name || "Evidence photo"}
+              style={{ maxWidth: '100%', maxHeight: '70vh' }}
             />
           )}
         </Modal.Body>

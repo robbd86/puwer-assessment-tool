@@ -195,37 +195,12 @@ const AssessmentPage = () => {
     navigate(`/report/${assessment.id}`);
   };
   
-  // Completely revised tab navigation logic
-  const handleTabChange = async (tab) => {
-    console.log("Tab change requested to:", tab);
-    
-    // No need to save if going to a tab that doesn't exist
-    if (!tab) {
-      console.error("Invalid tab target");
-      return;
-    }
-    
-    // Don't try to save if no assessment exists yet
-    if (id && assessment) {
-      try {
-        console.log("Saving current state before tab change");
-        
-        // Make a direct tab change - don't use updateAssessment for this
-        // Just update the UI state to avoid potential database errors
-        setActiveTab(tab);
-        
-      } catch (error) {
-        console.error("Error during tab change:", error);
-        setMessage('Error changing tabs. Please try again.');
-        setMessageType('danger');
-      }
-    } else {
-      // If no assessment, just change the tab
-      console.log("No assessment to save, setting tab directly");
-      setActiveTab(tab);
-    }
+  // Simplified tab handling - direct state change without extra logic
+  const handleTabChange = (tab) => {
+    console.log("Changing tab to:", tab);
+    setActiveTab(tab);
   };
-  
+
   // Direct form submission handler that simplifies the flow
   const onSubmitEquipmentDetails = async (data) => {
     console.log("Form submitted with data:", data);
@@ -338,7 +313,7 @@ const AssessmentPage = () => {
       
       <Tabs
         activeKey={activeTab}
-        onSelect={(k) => handleTabChange(k)}
+        onSelect={(k) => setActiveTab(k)}
         className="mb-4"
       >
         <Tab eventKey="details" title="Equipment Details">
