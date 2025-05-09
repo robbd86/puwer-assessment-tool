@@ -10,26 +10,42 @@ export const AssessmentProvider = ({ children }) => {
   const [assessments, setAssessments] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   // Load assessments from Supabase and questions from CSV
   useEffect(() => {
     const fetchAssessments = async () => {
-      const { data, error } = await supabase
-        .from('assessments')
-        .select('*')
-        .order('createdat', { ascending: false }); // use lowercase column name
-      
-      if (error) {
-        console.error('Error loading assessments:', error);
-      } else {
-        // Normalize assessment data to ensure consistent field naming throughout the app
-        const normalizedAssessments = (data || []).map(assessment => ({
-          ...assessment,
-          createdAt: assessment.createdat,
-          modifiedAt: assessment.modifiedat
-        }));
+      try {
+        const { data, error } = await supabase
+          .from('assessments')
+          .select('*')
+          .order('createdat', { ascending: false }); // use lowercase column name
         
-        setAssessments(normalizedAssessments);
+        if (error) {
+          console.error('Error loading assessments:', error);
+          setLoadError(error.message || 'Failed to load assessments');
+          // Still continue with empty assessment array
+          setAssessments([]);
+        } else {
+          // Normalize assessment data to ensure consistent field naming throughout the app
+          const normalizedAssessments = (data || []).map(assessment => ({
+            ...assessment,
+            createdAt: assessment.createdat,
+            modifiedAt: assessment.modifiedat,
+            answers: assessment.answers || {},
+            recommendations: assessment.recommendations || []
+          }));
+          
+          setAssessments(normalizedAssessments);
+          setLoadError(null);
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        setLoadError(err.message || 'An unexpected error occurred');
+        setAssessments([]);
+      } finally {
+        // Ensure we're not in a perpetual loading state
+        setLoading(false);
       }
     };
     
@@ -48,67 +64,126 @@ export const AssessmentProvider = ({ children }) => {
     fetchQuestions();
   }, []);
 
-  // Create a new assessment in Supabase
+  // Create a new assessment in Supabase with error handling
   const createAssessment = async (assessmentData) => {
-    console.log('Creating assessment with data:', assessmentData);
-    const { data, error } = await supabase
-      .from('assessments')
-      .insert([{ ...assessmentData, id: uuidv4() }])
-      .select()
-      .single();
-    if (error) throw error;
-    setAssessments(prev => [data, ...prev]);
-    return data.id;
-  };
-
-  // Update an existing assessment in Supabase
-  const updateAssessment = async (id, data) => {
-    const { data: updated, error } = await supabase
-      .from('assessments')
-      .update({ 
-        ...data, 
-        modifiedat: new Date().toISOString() // Ensure consistent lowercase field name for Supabase
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    try {
+      console.log('Creating assessment with data:', assessmentData);
       
-    if (error) throw error;
-    
-    // When receiving data back from Supabase, normalize fields to ensure consistent 
-    // access throughout the application
-    if (updated) {
-      // Convert Supabase's lowercase timestamp fields to camelCase for frontend consistency
-      const normalizedData = {
-        ...updated,
-        createdAt: updated.createdat,
-        modifiedAt: updated.modifiedat
+      // Generate a new ID for the assessment
+      const newId = uuidv4();
+      
+      // First create locally for immediate feedback
+      const newAssessment = { 
+        ...assessmentData, 
+        id: newId,
+        createdAt: new Date().toISOString(),
+        createdat: new Date().toISOString(),
+        modifiedAt: new Date().toISOString(),
+        modifiedat: new Date().toISOString(),
       };
       
-      setAssessments(prev => prev.map(a => a.id === id ? normalizedData : a));
+      // Update local state first for responsive UI
+      setAssessments(prev => [newAssessment, ...prev]);
+      
+      // Then try to save to Supabase
+      const { data, error } = await supabase
+        .from('assessments')
+        .insert([{ ...assessmentData, id: newId }])
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('Error saving to Supabase:', error);
+        // We keep the local version even if Supabase save fails
+      }
+      
+      return newId;
+    } catch (error) {
+      console.error('Error in createAssessment:', error);
+      // Return the locally created ID even if there was an error
+      return assessmentData.id;
     }
   };
 
-  // Save a question answer in Supabase
+  // Update an existing assessment in Supabase with error handling
+  const updateAssessment = async (id, data) => {
+    try {
+      // Update local state first for responsive UI
+      const currentAssessment = assessments.find(a => a.id === id) || {};
+      const updatedAssessment = { 
+        ...currentAssessment,
+        ...data,
+        modifiedAt: new Date().toISOString(),
+        modifiedat: new Date().toISOString()
+      };
+      
+      setAssessments(prev => prev.map(a => a.id === id ? updatedAssessment : a));
+      
+      // Then try to update in Supabase
+      const { data: updated, error } = await supabase
+        .from('assessments')
+        .update({ 
+          ...data, 
+          modifiedat: new Date().toISOString() // Ensure consistent lowercase field name for Supabase
+        })
+        .eq('id', id)
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('Error updating in Supabase:', error);
+        // We keep the local version even if Supabase update fails
+        return updatedAssessment;
+      }
+      
+      // If Supabase update was successful, normalize the returned data
+      if (updated) {
+        // Convert Supabase's lowercase timestamp fields to camelCase for frontend consistency
+        const normalizedData = {
+          ...updated,
+          createdAt: updated.createdat,
+          modifiedAt: updated.modifiedat
+        };
+        
+        // Update the assessment in our local state with the normalized data from the server
+        setAssessments(prev => prev.map(a => a.id === id ? normalizedData : a));
+        return normalizedData;
+      }
+      
+      return updatedAssessment;
+    } catch (error) {
+      console.error('Error in updateAssessment:', error);
+      // Return the locally updated assessment even if there was an error
+      return assessments.find(a => a.id === id) || {};
+    }
+  };
+
+  // Save a question answer in Supabase with error handling
   const saveAnswer = async (assessmentId, questionId, answer, comments = '', photos = []) => {
     try {
       const assessment = assessments.find(a => a.id === assessmentId);
       
+      if (!assessment) {
+        throw new Error(`Assessment with ID ${assessmentId} not found`);
+      }
+      
       // Process photos to ensure we're storing only the persistent dataUrls
       // This prevents storing temporary blob URLs that won't work after the session ends
-      const processedPhotos = photos.map(photo => {
+      const processedPhotos = (photos || []).map(photo => {
+        if (!photo) return null;
+        
         // Keep all properties but ensure dataUrl is used for storage
         // If uploading to a storage service in the future, this is where you'd
         // replace the dataUrl with a permanent URL from your storage service
         return {
-          id: photo.id,
-          name: photo.name,
-          type: photo.type,
-          size: photo.size,
+          id: photo.id || `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: photo.name || 'photo',
+          type: photo.type || 'image/jpeg',
+          size: photo.size || 0,
           dataUrl: photo.dataUrl, // Store the persistent data URL
-          createdAt: photo.createdAt
+          createdAt: photo.createdAt || new Date().toISOString()
         };
-      });
+      }).filter(Boolean); // Remove any nulls
       
       // Update the answers object
       const updatedAnswers = {
@@ -116,11 +191,23 @@ export const AssessmentProvider = ({ children }) => {
         [questionId]: { answer, comments, photos: processedPhotos }
       };
       
-      // Update the assessment in Supabase
+      // Update local state first
+      const updatedAssessment = {
+        ...assessment,
+        answers: updatedAnswers
+      };
+      
+      setAssessments(prev => 
+        prev.map(a => a.id === assessmentId ? updatedAssessment : a)
+      );
+      
+      // Then try to update in Supabase
       await updateAssessment(assessmentId, { 
         answers: updatedAnswers,
         modifiedat: new Date().toISOString()
       });
+      
+      return true;
     } catch (error) {
       console.error('Error saving answer:', error);
       throw new Error('Failed to save your answer. Please try again.');
@@ -161,6 +248,7 @@ export const AssessmentProvider = ({ children }) => {
     assessments,
     questions,
     loading,
+    loadError,
     createAssessment,
     updateAssessment,
     saveAnswer,

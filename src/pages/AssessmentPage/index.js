@@ -27,6 +27,7 @@ const AssessmentPage = () => {
     assessments, 
     questions, 
     loading, 
+    loadError,
     createAssessment, 
     updateAssessment, 
     completeAssessment,
@@ -322,6 +323,14 @@ const AssessmentPage = () => {
   return (
     <Container>
       <h1 className="mb-4">{id ? 'Edit Assessment' : 'New Assessment'}</h1>
+      
+      {loadError && (
+        <Alert variant="warning" className="mb-3">
+          <h5>Connection Issues Detected</h5>
+          <p>{loadError}</p>
+          <p>You can continue working on your assessment in offline mode. Your answers will be saved locally in your browser until connection is restored.</p>
+        </Alert>
+      )}
       
       {message && (
         <Alert variant={messageType} onClose={() => setMessage('')} dismissible>

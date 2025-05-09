@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button } from 'react-bootstrap';
+import { Card, Form, Button, Alert } from 'react-bootstrap';
 import { useAssessment } from '../../contexts/AssessmentContext';
 import { getQuestionHelp } from '../../services/mcpService';
 import PhotoUploader from '../PhotoUploader';
@@ -12,6 +12,8 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
   const [showHelp, setShowHelp] = useState(false);
   const [helpText, setHelpText] = useState('');
   const [loadingHelp, setLoadingHelp] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Defensive: ensure value is always an object
   useEffect(() => {
@@ -20,24 +22,64 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
     setPhotos(value?.photos || []);
   }, [value]);
   
-  // Handle answer selection (yes, no, na)
-  const handleAnswerChange = (e) => {
+  // Handle answer selection (yes, no, na) with error handling
+  const handleAnswerChange = async (e) => {
     const newAnswer = e.target.value;
-    setAnswer(newAnswer);
-    saveAnswer(assessmentId, question.regulationNumber, newAnswer, comments, photos);
+    setAnswer(newAnswer); // Update UI immediately
+    setSaveError(false);
+    setIsSaving(true);
+    
+    try {
+      await saveAnswer(assessmentId, question.regulationNumber, newAnswer, comments, photos);
+    } catch (error) {
+      console.error('Error saving answer:', error);
+      setSaveError(true);
+      // Continue with local state even if saving fails
+    } finally {
+      setIsSaving(false);
+    }
   };
   
-  // Handle comment changes
-  const handleCommentsChange = (e) => {
+  // Handle comment changes with error handling
+  const handleCommentsChange = async (e) => {
     const newComments = e.target.value;
-    setComments(newComments);
-    saveAnswer(assessmentId, question.regulationNumber, answer, newComments, photos);
+    setComments(newComments); // Update UI immediately
+    
+    // Don't try to save on every keystroke - wait until user stops typing
+    // This is handled in the onBlur event below
   };
   
-  // Handle photo updates
-  const handlePhotosChange = (newPhotos) => {
-    setPhotos(newPhotos);
-    saveAnswer(assessmentId, question.regulationNumber, answer, comments, newPhotos);
+  // Save comments when user finishes typing
+  const handleCommentBlur = async () => {
+    setSaveError(false);
+    setIsSaving(true);
+    
+    try {
+      await saveAnswer(assessmentId, question.regulationNumber, answer, comments, photos);
+    } catch (error) {
+      console.error('Error saving comments:', error);
+      setSaveError(true);
+      // Continue with local state even if saving fails
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  // Handle photo updates with error handling
+  const handlePhotosChange = async (newPhotos) => {
+    setPhotos(newPhotos); // Update UI immediately
+    setSaveError(false);
+    setIsSaving(true);
+    
+    try {
+      await saveAnswer(assessmentId, question.regulationNumber, answer, comments, newPhotos);
+    } catch (error) {
+      console.error('Error saving photos:', error);
+      setSaveError(true);
+      // Continue with local state even if saving fails
+    } finally {
+      setIsSaving(false);
+    }
   };
   
   // Get help from MCP service
@@ -69,6 +111,12 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
       <Card.Body>
         <Card.Title className="mb-3">{question.text}</Card.Title>
         
+        {saveError && (
+          <Alert variant="warning" className="mb-3">
+            There was an issue saving your response to the server. Your answer is saved locally and will be available while you're on this page.
+          </Alert>
+        )}
+        
         {/* Help section */}
         {showHelp && (
           <Card.Text className="bg-light p-3 rounded mb-3">
@@ -88,6 +136,7 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
               value="yes"
               checked={answer === 'yes'}
               onChange={handleAnswerChange}
+              disabled={isSaving}
             />
             <Form.Check
               type="radio"
@@ -97,6 +146,7 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
               value="no"
               checked={answer === 'no'}
               onChange={handleAnswerChange}
+              disabled={isSaving}
             />
             <Form.Check
               type="radio"
@@ -106,6 +156,7 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
               value="na"
               checked={answer === 'na'}
               onChange={handleAnswerChange}
+              disabled={isSaving}
             />
           </div>
         </Form.Group>
@@ -118,7 +169,9 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
             rows={2}
             value={comments}
             onChange={handleCommentsChange}
+            onBlur={handleCommentBlur}
             placeholder="Add any observations, notes or justifications..."
+            disabled={isSaving}
           />
         </Form.Group>
         
