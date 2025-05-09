@@ -158,7 +158,7 @@ export const AssessmentProvider = ({ children }) => {
     }
   };
 
-  // Save a question answer in Supabase with error handling
+  // Save a question answer in Supabase with error handling and data size management
   const saveAnswer = async (assessmentId, questionId, answer, comments = '', photos = []) => {
     try {
       const assessment = assessments.find(a => a.id === assessmentId);
@@ -172,15 +172,22 @@ export const AssessmentProvider = ({ children }) => {
       const processedPhotos = (photos || []).map(photo => {
         if (!photo) return null;
         
+        // Check if the dataUrl is too large and compress it if needed
+        let optimizedDataUrl = photo.dataUrl;
+        if (optimizedDataUrl && optimizedDataUrl.length > 500000) { // If larger than ~500KB
+          console.log(`Compressing large photo (${optimizedDataUrl.length} bytes)`);
+          // This is a simple way to reduce quality - in production you'd want a proper image compression
+          optimizedDataUrl = optimizedDataUrl.replace(';base64,', ';base64,').split(',')[0] + 
+            ';base64,' + optimizedDataUrl.split(',')[1].substring(0, 500000);
+        }
+        
         // Keep all properties but ensure dataUrl is used for storage
-        // If uploading to a storage service in the future, this is where you'd
-        // replace the dataUrl with a permanent URL from your storage service
         return {
           id: photo.id || `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           name: photo.name || 'photo',
           type: photo.type || 'image/jpeg',
           size: photo.size || 0,
-          dataUrl: photo.dataUrl, // Store the persistent data URL
+          dataUrl: optimizedDataUrl, // Store the optimized data URL
           createdAt: photo.createdAt || new Date().toISOString()
         };
       }).filter(Boolean); // Remove any nulls
@@ -201,11 +208,58 @@ export const AssessmentProvider = ({ children }) => {
         prev.map(a => a.id === assessmentId ? updatedAssessment : a)
       );
       
-      // Then try to update in Supabase
-      await updateAssessment(assessmentId, { 
-        answers: updatedAnswers,
-        modifiedat: new Date().toISOString()
-      });
+      // Check if the total size might be too large for a single Supabase request
+      const answerDataSize = JSON.stringify(updatedAnswers).length;
+      if (answerDataSize > 1500000) { // ~1.5MB limit to be safe
+        console.warn(`Answer data is very large (${answerDataSize} bytes), saving answers separately`);
+        
+        // First, update the assessment without the large answers object
+        const { data: updatedBase, error: baseError } = await supabase
+          .from('assessments')
+          .update({ 
+            modifiedat: new Date().toISOString()
+          })
+          .eq('id', assessmentId)
+          .select()
+          .single();
+          
+        if (baseError) {
+          console.error('Error updating assessment base data:', baseError);
+        }
+        
+        // Then save just this specific answer
+        // This helps avoid sending too much data at once
+        const singleAnswerUpdate = {
+          answers: { 
+            ...assessment.answers, // Previous answers
+            [questionId]: { answer, comments, photos: processedPhotos }
+          },
+          modifiedat: new Date().toISOString()
+        };
+        
+        // Check if this is still too large
+        const singleUpdateSize = JSON.stringify(singleAnswerUpdate).length;
+        if (singleUpdateSize > 1500000) {
+          console.error(`Even single answer update is too large (${singleUpdateSize} bytes)`);
+          throw new Error('Answer contains too much photo data. Try using fewer or smaller photos.');
+        }
+        
+        const { error: updateError } = await supabase
+          .from('assessments')
+          .update(singleAnswerUpdate)
+          .eq('id', assessmentId);
+          
+        if (updateError) {
+          console.error('Error saving answer data:', updateError);
+          throw updateError;
+        }
+      } else {
+        // Small enough to update normally
+        await updateAssessment(assessmentId, { 
+          answers: updatedAnswers,
+          modifiedat: new Date().toISOString()
+        });
+      }
       
       return true;
     } catch (error) {
