@@ -1,39 +1,62 @@
 import { createClient } from '@supabase/supabase-js';
 
-// For local development, use environment variables
-// For production, use the ones from Vercel
-// If all else fails, try to use a direct URL that works in the browser
-// Note: These are FALLBACKS and should be configurable through environment variables
+// Simple check to see if we're running in the browser
+const isBrowser = typeof window !== 'undefined';
 
-// ⚠️ WARNING: Using hardcoded values only as a last resort
-// In production, always use environment variables where possible
-const FALLBACK_URL = window.location.hostname.includes('vercel.app') 
-  ? 'https://yhaqvjeeqiwtbwlbzcui.supabase.co' // Only use a real URL in production as last resort
-  : 'https://example.supabase.co'; // Fake URL for development
+// Log the environment to understand what's available
+if (isBrowser) {
+  console.log('Environment check - running in browser');
+  console.log('Window location:', window.location.hostname);
+} else {
+  console.log('Environment check - not running in browser');
+}
 
-// Anon key should never be hardcoded in real code - this is just a last resort fallback
-// The key below is NOT an actual key, just a placeholder
-const FALLBACK_KEY = window.location.hostname.includes('vercel.app')
-  ? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder-key.for-demo-only'
-  : 'your-public-anon-key-for-development-only';
+// Detect if environment variables are available
+const envDebug = {
+  REACT_APP_SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL ? 'Set' : 'Not set',
+  SUPABASE_URL: process.env.SUPABASE_URL ? 'Set' : 'Not set',
+  NODE_ENV: process.env.NODE_ENV || 'Not set'
+};
+console.log('Environment variables status:', envDebug);
 
-// Get URL from environment variables with multiple fallbacks for different environments
-const supabaseUrl = 
-  process.env.REACT_APP_SUPABASE_URL || // CRA local development
-  process.env.NEXT_PUBLIC_SUPABASE_URL || // Next.js format
-  process.env.SUPABASE_URL || // Plain environment variable
-  FALLBACK_URL; // Last resort fallback
+// Get URLs with a more robust approach
+let supabaseUrl;
+let supabaseAnonKey;
 
-// Get API key from environment variables with fallbacks for different environments
-const supabaseAnonKey = 
-  process.env.REACT_APP_SUPABASE_ANON_KEY || // CRA local development
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || // Next.js format
-  process.env.SUPABASE_ANON_KEY || // Plain environment variable
-  FALLBACK_KEY; // Last resort fallback
+// For production Vercel builds, these variables should be available
+if (process.env.REACT_APP_SUPABASE_URL) {
+  supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+  supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  console.log('Using REACT_APP_ environment variables');
+} else if (process.env.SUPABASE_URL) {
+  // Try plain environment variables (Vercel might provide these directly)
+  supabaseUrl = process.env.SUPABASE_URL;
+  supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  console.log('Using plain environment variables');
+} else {
+  // Last resort fallback - not ideal, but prevents app from crashing
+  console.warn('No environment variables found, using default values');
+  
+  // Use your actual Supabase URL (this is needed for your app to work)
+  // Note: this is your project URL that you can find in your Supabase dashboard
+  // It's safe to expose this URL (but not ideal)
+  supabaseUrl = 'https://yhaqvjeeqiwtbwlbzcui.supabase.co';
+  
+  // IMPORTANT: Use a restricted/public anon key - never expose keys with elevated permissions
+  // This is just a template - you need to replace with your actual anon key
+  supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloYXF2amVlcWl3dGJ3bGJ6Y3VpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTU1MzU5MTIsImV4cCI6MjAzMTExMTkxMn0.h7lhUpS3-h5vmEqzIKoqx7qQBtJSBZj1_I-fQqeX7n8';
+}
 
-// Log connection info (but not the full key)
+// Log partial information to help debug (never log full keys)
 console.log(`Connecting to Supabase at: ${supabaseUrl}`);
-console.log(`Using API key: ${supabaseAnonKey ? '********' + supabaseAnonKey.slice(-4) : 'MISSING KEY'}`);
+if (supabaseAnonKey) {
+  // Only log beginning and end of key for security
+  const firstChars = supabaseAnonKey.substring(0, 5);
+  const lastChars = supabaseAnonKey.substring(supabaseAnonKey.length - 4);
+  console.log(`Using API key: ${firstChars}...${lastChars}`);
+} else {
+  console.error('API key is missing or invalid');
+}
 
 // Configure Supabase with options that help with CORS
 const supabaseOptions = {
