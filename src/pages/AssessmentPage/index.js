@@ -224,16 +224,11 @@ const AssessmentPage = () => {
   const onSubmitEquipmentDetails = async (data) => {
     console.log("Form submitted with data:", data);
     
-    // Ensure we have required fields
-    if (!data.name || !data.assessor) {
-      setMessage('Please enter equipment name and assessor name to continue.');
-      setMessageType('danger');
-      return;
-    }
+    // Show a loading indicator or disable the button to prevent double submission
+    setMessage('Saving equipment details...');
+    setMessageType('info');
     
     try {
-      setMessage('');
-      
       if (!id) {
         // For new assessments, include all required fields
         const newId = await createAssessment({
@@ -248,7 +243,12 @@ const AssessmentPage = () => {
           completed: false
         });
         console.log("Created assessment with ID:", newId);
-        navigate(`/assessment/${newId}`);
+        
+        // Navigate directly without requiring resubmission
+        if (newId) {
+          navigate(`/assessment/${newId}`);
+          return; // Exit early to avoid additional logic
+        }
       } else {
         await updateAssessment(id, { 
           equipmentDetails: {
@@ -262,7 +262,7 @@ const AssessmentPage = () => {
       }
     } catch (error) {
       console.error("Error saving assessment:", error);
-      setMessage('Error saving assessment data. Please try again.');
+      setMessage('Error saving assessment data: ' + (error.message || 'Unknown error'));
       setMessageType('danger');
     }
   };

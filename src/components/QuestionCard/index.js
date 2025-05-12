@@ -23,9 +23,12 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
   }, [value]);
   
   // Handle answer selection (yes, no, na) with error handling
-  const handleAnswerChange = async (e) => {
-    const newAnswer = e.target.value;
-    setAnswer(newAnswer); // Update UI immediately
+  const handleAnswerChange = async (newAnswer) => {
+    // Only proceed if this is a new answer (prevents double-processing)
+    if (newAnswer === answer) return;
+    
+    // Update UI immediately for responsiveness
+    setAnswer(newAnswer);
     setSaveError(false);
     setIsSaving(true);
     
@@ -135,7 +138,7 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
               id={`yes-${question.regulationNumber}`}
               value="yes"
               checked={answer === 'yes'}
-              onChange={handleAnswerChange}
+              onChange={() => handleAnswerChange('yes')}
               disabled={isSaving}
             />
             <Form.Check
@@ -145,7 +148,7 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
               id={`no-${question.regulationNumber}`}
               value="no"
               checked={answer === 'no'}
-              onChange={handleAnswerChange}
+              onChange={() => handleAnswerChange('no')}
               disabled={isSaving}
             />
             <Form.Check
@@ -155,7 +158,7 @@ const QuestionCard = ({ question, assessmentId, value = {} }) => {
               id={`na-${question.regulationNumber}`}
               value="na"
               checked={answer === 'na'}
-              onChange={handleAnswerChange}
+              onChange={() => handleAnswerChange('na')}
               disabled={isSaving}
             />
           </div>
